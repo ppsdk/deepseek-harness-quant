@@ -1,90 +1,28 @@
-/* ui_v2/core/api.js — ★统一 API 客户端（UI v2 标准 #18 冗余+数据顺畅）
-   功能：8s 超时 + 失败重试 1 次 + 同页缓存（同 URL 只拉一次）+ 60s 轮询（活跃页）
-   全局命名空间 LW.api，供所有页面复用——冗余容错（不白屏）的第一道防线。
-   用法：
-     LW.api.get('/api/live/factors').then(function(d){...})   // 自动缓存+重试
-     LW.api.poll('/api/live/factors', 60, renderFn)           // 60s 轮询
-*/
-(function (win) {
-  'use strict';
-  var cache = {};        // url -> {ts, data, status:'ok'|'err'}
-  var inflight = {};     // url -> Promise（防并发重复请求）
-
-  function get(url, opts) {
-    opts = opts || {};
-    var timeout = opts.timeout || 8000;
-    var retry = opts.retry !== undefined ? opts.retry : 1;   // 默认重试 1 次
-    var bypass = opts.bypass === true;   // 强制刷新（审批/卖出后即时更新用）
-    var cached = cache[url];
-    var now = Date.now();
-    // 同页缓存：30s 内直接复用（页面内多个组件共用一个 API）
-    if (!bypass && cached && now - cached.ts < 30000 && cached.status === 'ok') {
-      return Promise.resolve(cached.data);
-    }
-    if (inflight[url]) { return inflight[url]; }
-
-    var p = fetch(url, { cache: 'no-store' })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      })
-      .then(function (data) {
-        cache[url] = { ts: Date.now(), data: data, status: 'ok' };
-        return data;
-      })
-      .catch(function (err) {
-        // 重试一次（网络抖动）
-        if (retry > 0) {
-          retry--;
-          return fetch(url, { cache: 'no-store' }).then(function (r) {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-          }).then(function (data) {
-            cache[url] = { ts: Date.now(), data: data, status: 'ok' };
-            return data;
-          });
-        }
-        // 重试仍失败：有缓存则降级返回缓存（非白屏），无缓存则抛错
-        if (cached) { cache[url].status = 'err'; return cached.data; }
-        throw err;
-      })
-      .then(function (data) { delete inflight[url]; return data; })
-      .catch(function (err) { delete inflight[url]; throw err; });
-    inflight[url] = p;
-    return p;
-  }
-
-  // 轮询：interval 秒拉一次（后台标签页自动降频 5min——省资源）
-  function poll(url, intervalSec, renderFn) {
-    var tick = function () {
-      var hidden = document.hidden;
-      var wait = hidden ? 300000 : (intervalSec * 1000);
-      get(url).then(renderFn).catch(function () { /* 降级由 get 处理 */ });
-      setTimeout(tick, wait);
-    };
-    tick();
-  }
-
-  // 清空缓存（审批/卖出后数据已变，下次 get 强制重拉最新）
-  function clear() {
-    cache = {};
-    inflight = {};
-  }
-
-  // POST JSON（审批/卖出/手动更新等写操作——不带缓存、不重试）
-  function post(url, body, opts) {
-    opts = opts || {};
-    return fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body || {}),
-      cache: 'no-store'
-    }).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    });
-  }
-
-  win.LW = win.LW || {};
-  win.LW.api = { get: get, poll: poll, clear: clear, post: post };
+/* Shared HTTP client: bounded requests, transient GET retries, explicit stale fallback. */
+(function(win){
+ 'use strict';
+ var cache=Object.create(null),inflight=Object.create(null),generation=0;
+ function request(url,options,timeout){
+  var controller=new AbortController(),timer=setTimeout(function(){controller.abort();},timeout);
+  return fetch(url,Object.assign({cache:'no-store',signal:controller.signal},options||{})).then(function(r){
+   return r.text().then(function(body){var data;try{data=body?JSON.parse(body):{};}catch(e){var bad=new Error('服务器返回了无法读取的数据（HTTP '+r.status+'）');bad.status=r.status;throw bad;}
+    if(!r.ok){var error=new Error(data.error||data.message||'请求失败（HTTP '+r.status+'）');error.status=r.status;throw error;}return data;
+   });
+  }).catch(function(error){if(error.name==='AbortError'){var e=new Error('请求超时，请稍后重试；已提交的任务可在原页面查看状态。');e.timeout=true;throw e;}throw error;}).finally(function(){clearTimeout(timer);});
+ }
+ function get(url,opts){
+  opts=opts||{};var old=cache[url],now=Date.now(),stamp=generation;
+  if(!opts.bypass&&old&&now-old.ts<(opts.cacheMs==null?30000:opts.cacheMs))return Promise.resolve(old.data);
+  if(inflight[url])return inflight[url];
+  var retries=opts.retry==null?1:Math.max(0,opts.retry);
+  function attempt(){return request(url,null,opts.timeout||8000).catch(function(error){if(retries>0&&(!error.status||error.status>=500||error.status===429)){retries--;return attempt();}throw error;});}
+  var pending=attempt().then(function(data){if(generation===stamp)cache[url]={ts:Date.now(),data:data};return data;}).catch(function(error){
+   if(opts.allowStale&&old&&old.data&&typeof old.data==='object')return Object.assign({},old.data,{cache_warning:'数据更新失败，正在显示之前取得的内容。',cached_at:new Date(old.ts).toISOString()});throw error;
+  }).finally(function(){if(inflight[url]===pending)delete inflight[url];});
+  inflight[url]=pending;return pending;
+ }
+ function post(url,body,opts){opts=opts||{};return request(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})},opts.timeout||30000);}
+ function poll(url,seconds,render){var stopped=false,timer;function tick(){if(stopped)return;get(url).then(function(data){if(!stopped)render(data);}).catch(function(){}).finally(function(){if(!stopped)timer=setTimeout(tick,document.hidden?300000:seconds*1000);});}tick();return function(){stopped=true;clearTimeout(timer);};}
+ function clear(){generation++;cache=Object.create(null);inflight=Object.create(null);}
+ win.LW=win.LW||{};win.LW.api={get:get,post:post,poll:poll,clear:clear};
 })(window);

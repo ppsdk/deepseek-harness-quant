@@ -1,0 +1,169 @@
+refresh:
+  on_startup: true
+  timeout_seconds: 20
+  decode_timeout_seconds: 30
+  workers: 4
+  history_start: '2019-01-01'
+  stale_days: 10
+  poll_seconds: 5
+sources:
+  csindex:
+    label: 中证指数
+    url: https://www.csindex.com.cn/csindex-home/perf/index-perf
+    reference: https://www.csindex.com.cn/
+  sina_us:
+    label: 新浪美股日线（AKShare 解码）
+    url: https://finance.sina.com.cn/staticdata/us/{symbol}
+    reference: https://akshare.akfamily.xyz/data/index/index.html
+  cboe:
+    label: Cboe 官方历史日线
+    url: https://cdn.cboe.com/api/global/us_indices/daily_prices/VXN_History.csv
+    reference: https://www.cboe.com/us/indices/dashboard/vxn/
+  optbbs:
+    label: 期权论坛 QVIX（AKShare 同源）
+    url: http://1.optbbs.com/d/csv/d/k.csv
+    reference: http://1.optbbs.com/s/vix.shtml?300ETF
+  dividend:
+    label: 中证指数估值表（计算用股本股息率）
+    url: https://oss-ch.csindex.com.cn/static/html/csindex/public/uploads/file/autofile/indicator/{symbol}indicator.xls
+    reference: https://www.csindex.com.cn/#/indices/family/detail?indexCode=930955
+    date_column: 0
+    yield_column: 9
+  bond:
+    label: 东方财富转引中国十年期国债收益率
+    url: https://datacenter-web.eastmoney.com/api/data/v1/get
+    reference: https://data.eastmoney.com/cjsj/zmgzsyl.html
+    params:
+      reportName: RPTA_WEB_TREASURYYIELD
+      columns: SOLAR_DATE,EMM00166466
+      sortColumns: SOLAR_DATE
+      sortTypes: -1
+      pageSize: 1000
+      pageNumber: 1
+indices:
+  csi300:
+    code: 000300.SH
+    symbol: '000300'
+    name: 沪深300
+    provider: csindex
+    color: '#ec8c75'
+    volume_unit: 数据源原始单位
+  nasdaq:
+    code: IXIC.US
+    symbol: .IXIC
+    name: 纳斯达克综合
+    provider: sina_us
+    color: '#86aef5'
+    volume_unit: 数据源原始单位
+  sp500:
+    code: SP500.US
+    symbol: .INX
+    name: 标普500
+    provider: sina_us
+    color: '#59c9ac'
+    volume_unit: 数据源原始单位
+  nasdaq100:
+    code: NDX.US
+    symbol: .NDX
+    name: 纳斯达克100
+    provider: sina_us
+    volume_unit: 数据源原始单位
+  dividend_lowvol:
+    code: 930955.CSI
+    symbol: '930955'
+    name: 红利低波100
+    provider: csindex
+    volume_unit: 数据源原始单位
+fear_indices:
+  a_share:
+    name: A股期权恐慌指标：沪深300ETF QVIX
+    code: QVIX300ETF.CN
+    provider: optbbs
+    columns: [0, 9, 10, 11, 12]
+    color: '#ec8c75'
+    description: 沪深300ETF期权隐含波动率，数值越高，市场对未来波动的预期越大。由期权论坛编制，并非覆盖全A股的官方恐慌指数。
+  nasdaq:
+    name: 纳斯达克100恐慌指数 VXN
+    code: VXN.US
+    provider: cboe
+    color: '#86aef5'
+    description: Cboe根据纳斯达克100指数期权计算的未来约30天年化隐含波动率；不同于标普500的VIX，也不直接覆盖纳斯达克综合全部股票。
+sectors:
+  energy: {code: '000928.CSI', symbol: '000928', name: 能源, provider: csindex}
+  materials: {code: '000929.CSI', symbol: '000929', name: 原材料, provider: csindex}
+  industrials: {code: '000930.CSI', symbol: '000930', name: 工业, provider: csindex}
+  discretionary: {code: '000931.CSI', symbol: '000931', name: 可选消费, provider: csindex}
+  staples: {code: '000932.CSI', symbol: '000932', name: 主要消费, provider: csindex}
+  healthcare: {code: '000933.CSI', symbol: '000933', name: 医药卫生, provider: csindex}
+  financials: {code: '000934.CSI', symbol: '000934', name: 金融地产, provider: csindex}
+  technology: {code: '000935.CSI', symbol: '000935', name: 信息技术, provider: csindex}
+  telecom: {code: '000936.CSI', symbol: '000936', name: 电信业务, provider: csindex}
+  utilities: {code: '000937.CSI', symbol: '000937', name: 公用事业, provider: csindex}
+temperature:
+  label: A股板块温度（中证10个行业）
+  history_window: 756
+  min_observations: 120
+  momentum_days: 20
+  volatility_days: 20
+  drawdown_days: 252
+  trading_days_per_year: 252
+  weights: {momentum: 0.4, drawdown: 0.3, volatility: 0.3}
+  description: 0到100分。20日涨幅在自身近三年历史中的位置占40%，回撤较浅的历史位置占30%，波动较低的历史位置占30%；分数越高表示近期走势更强、更平稳，不代表估值更便宜。A股市场压力分为同一日期行业温度均值的反向分数。
+  min_sector_coverage: 0.8
+dividend_score:
+  label: 红利低波性价比分数
+  index: dividend_lowvol
+  weights: {yield_gap: 0.5, drawdown: 0.25, volatility: 0.25}
+  yield_gap_range_pp: [-1, 5]
+  drawdown_range: [0, 0.3]
+  drawdown_days: 252
+  volatility_days: 20
+  history_window: 756
+  min_observations: 120
+  alignment_days: 7
+  description: 股债利差得分占50%，回撤位置占25%，低波动得分占25%。分数越高，表示按这套规则更有吸引力；不是收益预测。缺任一项或数据过旧时不计算总分。
+comparison:
+  indices: [csi300, nasdaq, sp500]
+  default_days: 365
+  periods:
+    '365': 近一年
+    '1095': 近三年
+    '1825': 近五年
+  description: 三个价格指数取共同交易日，起点统一为100；不填补休市日期，不含分红再投资或汇率变化。中美收盘时间不同，此图用于历史表现比较，不直接作为同步交易信号。
+interpretation:
+  default_horizon: '20'
+  horizons:
+    '5': {label: 后5个交易日, large_move: 0.03}
+    '20': {label: 后20个交易日, large_move: 0.05}
+    '60': {label: 后60个交易日, large_move: 0.1}
+  min_samples: 12
+  min_validation_samples: 6
+  validation_fraction: 0.3
+  minimum_difference: 0.05
+  import_max_rows: 10000
+  import_max_bytes: 1000000
+  metrics:
+    pressure:
+      name: A股市场压力
+      unit: 分
+      target: csi300
+      bins: [null, 20, 40, 60, 80, null]
+      description: 压力越高代表近期走势越弱；高压力既可能延续下跌，也可能伴随反弹，要看后续统计。
+    a_share:
+      name: 沪深300ETF QVIX
+      unit: '%'
+      target: csi300
+      bins: [null, 15, 20, 25, 30, null]
+      description: 隐含波动率越高，代表预期波动越大，本身不指明涨跌方向。这里用沪深300价格指数作为ETF所跟踪市场的观察对象。
+    nasdaq:
+      name: 纳斯达克100 VXN
+      unit: '%'
+      target: nasdaq100
+      bins: [null, 15, 20, 25, 30, 40, null]
+      description: 与纳斯达克100配对观察。高VXN可能出现在急跌过程中，也可能出现在反弹前，不能仅凭数值高就断定接下来大跌。
+    dividend:
+      name: 红利低波性价比
+      unit: 分
+      target: dividend_lowvol
+      bins: [null, 20, 40, 60, 80, null]
+      description: 高分代表按当前公式更有吸引力；是否真的更容易上涨，还需历史股息率、国债收益率和价格共同验证。

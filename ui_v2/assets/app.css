@@ -1,6 +1,7 @@
 /* ui_v2/assets/app.css — UI v2 公共页面样式（组件级，配合 ui_common.css tokens）
    逻辑层级四级：状态条  摘要 KPI  主内容  折叠详情（架构修订v2 + UI_STANDARD） */
 .v2-wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
+@media(max-width:799px){body{padding-left:0!important}.v2-wrap{padding:64px 14px 20px;min-width:0}.v2-h{flex-wrap:wrap}.sb{max-width:calc(100vw - 48px)}.sb-resize{display:none}}
 .v2-card { margin-top: 14px; }   /* ★#351 间距唯一管理（padding/边框/圆角统一在第 119 行 .v2-card 规范） */
 .v2-card h2 { font-size: 16px; margin-bottom: 8px; }
 .v2-card h2 .tag { font-size: 12px; color: var(--muted); font-weight: 400; }

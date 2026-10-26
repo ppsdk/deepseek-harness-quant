@@ -1,0 +1,6 @@
+# Minimal AKShare / SQLite data preparation environment, separate from optional backtest engines.
+akshare==1.19.3
+numpy>=1.26,<2
+pandas>=2.2,<3
+PyYAML>=6.0
+openpyxl>=3.1

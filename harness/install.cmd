@@ -1,17 +1,23 @@
 @echo off
-REM DSHQuant harness 运行时安装脚本（git clone 用户使用；Release zip 已自带 node_modules）
-REM 需要：Node.js 18+（https://nodejs.org）
 cd /d "%~dp0"
-echo [1/2] 安装 DeepSeek HARNESS 运行时依赖（约 530 包 / 250MB，需几分钟）...
-call npm install --no-audit --no-fund
+node -e "if (Number(process.versions.node.split('.')[0]) < 24) { console.error('DSHQuant requires Node.js 24 or newer.'); process.exit(1); }"
 if errorlevel 1 (
-  echo 安装失败：请确认 Node.js 已安装且 npm 可用
+  echo Install Node.js 24 LTS, then run this script again.
   pause
   exit /b 1
 )
-echo [2/2] 完成。启动方式：运行仓库根 launcher.py，或手动：
-echo   set DSH_HOME=%~dp0home
-echo   node node_modules\@deepseek-ai\dsh\lib\bin.js web
-echo.
-echo 首次使用请配置 API Key：复制 home\.credentials.yaml.example 为 home\.credentials.yaml 并填入 DeepSeek API Key
+echo Installing the DSH version pinned in package.json and package-lock.json...
+if exist package-lock.json (
+  call npm ci --no-audit --no-fund
+) else (
+  call npm install --no-audit --no-fund
+)
+if errorlevel 1 (
+  echo Installation failed. Check Node.js, npm, and network access.
+  pause
+  exit /b 1
+)
+node node_modules\@deepseek-ai\dsh\lib\bin.js --version
+echo Ready. Configure the API key with the repository setup script.
+echo Then run: python launcher.py
 pause

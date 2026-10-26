@@ -1,109 +1,16 @@
-/* ★2026-08-13 #289 深色侧边栏 → ★2026-08-15 StyleKit Linear Style
-   Sidebar: 256px, bg #111114, nav labels #a1a1aa,
-   active item: #5e6ad2 left border + rgba(94,106,210,.2)→#1c1c22 bg.
-   底部：数据日 + 择时（读 portal_dash，LW.api 冗余兜底） */
-(function () {
-  var ITEMS = [
-    { id: 'portal',   label: '门户',   ic: 'home',     url: '/' },
-    { id: 'control',  label: '控制',   ic: 'cpu',      url: '/control' },
-    { id: 'pitch',    label: '决策',   ic: 'target',   url: '/pitch' },
-    { id: 'holdings', label: '持仓',   ic: 'bar',      url: '/holdings' },
-    { id: 'factors',  label: '因子',   ic: 'molecule', url: '/factors' },
-    { id: 'backtest', label: '回测',   ic: 'chart',    url: '/backtest' },
-    { id: 'pitchtrack', label: '远期', ic: 'funnel', url: '/pitchtrack' }
-  ];
-  // ★P2 菜单收敛（2026-08-15）：主菜单 6 项（门户/控制/决策/持仓/因子/回测）+「更多」分组（日报/数据/说明）
-  var MORE = [
-    { id: 'report',  label: '日报', ic: 'doc',  url: '/report' },
-    { id: 'data',    label: '数据', ic: 'db',   url: '/data' },
-    { id: 'help',    label: '说明', ic: 'help', url: '/help' }
-  ];
-
-  window.LW = window.LW || {};
-  LW.sidebar = {
-    render: function (elId, opts) {
-      var el = document.getElementById(elId);
-      if (!el) return;
-      var IC = LW.icons || {};
-      var active = (opts && opts.active) || 'portal';
-      var html =
-        '<div class="sb">' +
-          '<div class="sb-brand" title="Deepseek HARNESS Quant">' +
-            '<span class="sb-brand-text">Deepseek HARNESS <span style="font-weight:400">Quant</span></span>' +
-          '</div>' +
-          '<nav class="sb-nav">' +
-            ITEMS.map(function (it) {
-              var cls = it.id === active ? 'sb-item active' : 'sb-item';
-              return '<a class="' + cls + '" href="' + it.url + '">' + (IC[it.ic] || '') + it.label + '</a>';
-            }).join('') +
-            /* ★2026-08-16 「更多」默认折叠：点击标签展开（grid-rows 动画），箭头旋转指示 */
-            '<div class="sb-sub-label sb-more-toggle" id="' + elId + '-more-toggle" title="展开/收起更多">' +
-              '<span>更多</span><span class="sb-more-chev">▸</span></div>' +
-            '<div class="sb-more-body" id="' + elId + '-more-body" style="display:grid;grid-template-rows:0fr;transition:grid-template-rows .22s var(--ease-hover)">' +
-              '<div style="overflow:hidden">' +
-                MORE.map(function (it) {
-                  var cls = it.id === active ? 'sb-item active sb-sub-item' : 'sb-item sb-sub-item';
-                  return '<a class="' + cls + '" href="' + it.url + '">' + (IC[it.ic] || '') + it.label + '</a>';
-                }).join('') +
-              '</div>' +
-            '</div>' +
-          '</nav>' +
-          '<div class="sb-search" id="' + elId + '-srch"></div>' +
-          '<div class="sb-foot" id="' + elId + '-foot">' +
-            '<span class="sb-mini">数据日 …</span>' +
-            '<span class="sb-mini">择时 …</span>' +
-          '</div>' +
-        '</div>';
-      el.innerHTML = html;
-      // ★2026-08-16 「更多」默认折叠：点击标签展开/收起（箭头旋转指示，动画流畅）
-      var moreToggle = document.getElementById(elId + '-more-toggle');
-      if (moreToggle) {
-        moreToggle.addEventListener('click', function () {
-          var body = document.getElementById(elId + '-more-body');
-          var chev = moreToggle.querySelector('.sb-more-chev');
-          var open = moreToggle.classList.toggle('open');
-          if (body) body.style.gridTemplateRows = open ? '1fr' : '0fr';
-          if (chev) chev.style.transform = open ? 'rotate(90deg)' : '';
-        });
-      }
-      // 单股搜索（#311：全站可搜——依赖 search.js，未加载则跳过）
-      try { if (LW.search) LW.search.render(elId + '-srch', '搜索股票代码/名称'); } catch (e) {}
-      // ★#312 顶部滚动信息栏（#166 动态 ticker 恢复——彭博式黑底滚动）
-      // ★2026-08-16 只保留黑色行情滚动条（lt-bar）；轮播提示条（lt-rotator）已删除——用户要求
-      try {
-        var wrap = document.querySelector('.v2-wrap');
-        if (wrap && !document.getElementById('lt-inject')) {
-          var holder = document.createElement('div');
-          holder.id = 'lt-inject';
-          holder.innerHTML = '<div class="lt-bar" style="margin-bottom:6px"></div>';
-          wrap.insertBefore(holder, wrap.firstChild);
-          var s = document.createElement('script');
-          s.src = '/live_ticker.js';
-          document.head.appendChild(s);
-        }
-      } catch (e) {}
-      // ★2026-08-16 构建模式徽章：/api/build_mode 返回 dev 时显示「DEV 开发版」（release/失败隐藏）
-      LW.api.get('/api/build_mode').then(function (bm) {
-        var badge = document.getElementById(elId + '-devbadge');
-        if (!badge) return;
-        if (bm && bm.mode === 'dev') {
-          badge.style.display = 'inline-block';
-          badge.title = bm.hint || '内部测试构建，非公测发布版';
-        }
-      }).catch(function () {});
-      LW.api.get('/api/live/portal_dash').then(function (d) {
-        var tm = (d.timing && d.timing.timing) || {};
-        var dd = d.data_date || (d.brief && d.brief.date) || tm.date || '';
-        var f = document.getElementById(elId + '-foot');
-        if (!f) return;
-        var sc = tm.score != null ? tm.score : '…';
-        var lv = tm.level || '';
-        f.innerHTML =
-          '<span class="sb-mini">数据日 ' + dd + '</span>' +
-          '<span class="sb-mini">择时 ' + sc + (lv ? ' · ' + lv : '') + '</span>';
-      }).catch(function () {});
-    }
-  };
+/* Configuration-driven flat navigation, with stock autocomplete. */
+(function(){
+ window.LW=window.LW||{};
+ var esc=function(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+ LW.sidebar={render:function(elId,opts){
+  var el=document.getElementById(elId);if(!el)return;opts=opts||{};
+  if(!opts.navigation){el.textContent='加载导航…';LW.api.get('/api/navigation').then(function(data){LW.sidebar.render(elId,Object.assign({},opts,{navigation:data}));}).catch(function(e){el.textContent=e.message;});return;}
+  if(!document.querySelector('link[href="/v2/assets/studio.css"]')){var link=document.createElement('link');link.rel='stylesheet';link.href='/v2/assets/studio.css';document.head.appendChild(link);}
+  var nav=opts.navigation,icons=LW.icons||{},items=(nav.primary||[]).concat(nav.more||[]),groups=nav.groups||[{items:items}];
+  el.innerHTML='<div class="sb"><div class="sb-brand"><span class="sb-brand-text">'+esc(nav.brand||'量化研究')+'</span></div><nav class="sb-nav">'+groups.map(function(group){return (group.label?'<div class="sb-section">'+esc(group.label)+'</div>':'')+(group.items||[]).map(function(it){return '<a class="sb-item '+(it.id===opts.active?'active':'')+'" href="'+esc(it.url)+'">'+(icons[it.ic]||'')+esc(it.label)+'</a>';}).join('');}).join('')+'</nav><div class="sb-search" id="'+elId+'-srch"></div><div class="sb-foot" id="'+elId+'-foot"><span class="sb-mini">只读取本机已下载的数据</span></div></div>';
+  if(LW.search)LW.search.render(elId+'-srch','输入名称或代码自动匹配');
+  document.dispatchEvent(new Event('lw:sidebar-ready'));
+ }};
 })();
 
 /* ★2026-08-15 可调宽度侧栏：拖拽右侧手柄调宽（200-420px），宽度记忆 localStorage，
@@ -119,7 +26,7 @@
   }
   function initResize() {
     var sb = document.querySelector('.sb');
-    if (!sb) return;
+    if (!sb || sb.querySelector('.sb-resize')) return;
     var saved = null;
     try { saved = parseInt(localStorage.getItem(KEY), 10); } catch (e) {}
     if (saved && saved >= MIN && saved <= MAX) applyW(saved);
@@ -146,6 +53,7 @@
       document.addEventListener('mouseup', up);
     });
   }
+  document.addEventListener('lw:sidebar-ready', initResize);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initResize);
   else initResize();
 })();
@@ -170,7 +78,7 @@
   }
   function initFold() {
     var sb = document.querySelector('.sb');
-    if (!sb) return;
+    if (!sb || sb.querySelector('.sb-fold-btn')) return;
     var brand = sb.querySelector('.sb-brand');
     if (brand) {
       var foldBtn = document.createElement('button');
@@ -194,10 +102,12 @@
     try { saved = localStorage.getItem(COLL); } catch (e) {}
     // 初始恢复直接应用（不经过 busy 锁，避免首帧闪烁）
     busy = true;
-    document.body.classList.toggle('sb-collapsed', saved === '1');
-    open.style.display = saved === '1' ? 'flex' : 'none';
+    var initiallyCollapsed = saved == null ? window.innerWidth < 800 : saved === '1';
+    document.body.classList.toggle('sb-collapsed', initiallyCollapsed);
+    open.style.display = initiallyCollapsed ? 'flex' : 'none';
     setTimeout(function () { busy = false; }, 260);
   }
+  document.addEventListener('lw:sidebar-ready', initFold);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initFold);
   else initFold();
 })();

@@ -1,0 +1,70 @@
+brand: 量化研究
+groups:
+- label: 研究与实验
+  items:
+  - id: research
+    label: 研究工作台
+    ic: home
+    url: /research
+  - id: factors
+    label: 因子管理
+    ic: molecule
+    url: /factors
+  - id: strategies
+    label: 策略管理
+    ic: target
+    url: /strategies
+  - id: backtest
+    label: 运行回测
+    ic: chart
+    url: /backtest
+  - id: backtests
+    label: 回测管理
+    ic: chart
+    url: /backtests
+  - id: ml
+    label: 机器学习
+    ic: cpu
+    url: /ml
+  - id: timing
+    label: 市场择时
+    ic: bar
+    url: /timing
+  - id: market
+    label: 大盘分析
+    ic: bar
+    url: /market
+  - id: watchlists
+    label: 保存的股票池
+    ic: target
+    url: /watchlists
+  - id: signals
+    label: 候选股信号
+    ic: target
+    url: /signals
+  - id: positions
+    label: 仓位管理
+    ic: target
+    url: /positions
+- label: 数据与资料
+  items:
+  - id: data
+    label: 股票与数据
+    ic: db
+    url: /data
+  - id: papers
+    label: 量化论文
+    ic: doc
+    url: /papers
+  - id: learn
+    label: 学习教程
+    ic: doc
+    url: /learn
+  - id: control
+    label: AI 辅助
+    ic: cpu
+    url: /control
+  - id: help
+    label: 使用说明
+    ic: help
+    url: /help

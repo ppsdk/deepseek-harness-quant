@@ -11,7 +11,7 @@
     box.innerHTML =
       '<div class="v2-statusbar" style="display:flex;align-items:center;gap:14px;padding:10px 18px;' +
       'background:linear-gradient(120deg,#4c5bd6,#7c5cf0);color:#ffffff;border-radius:0 0 12px 12px;font-size:13px">' +
-      '<b style="font-size:16px;font-weight:800;letter-spacing:.5px;white-space:nowrap">Deepseek HARNESS <span style="opacity:.82">Quant</span></b>' +
+      '<b style="font-size:16px;font-weight:800;letter-spacing:.5px;white-space:nowrap">量化研究</b>' +
       '<span class="mini" id="sb-date" style="opacity:.75">数据日 …</span>' +
       '<span class="mini" id="sb-chain" style="opacity:.75">决策链 …</span>' +
       '<span class="mini" id="sb-timing" style="opacity:.75">择时 …</span>' +

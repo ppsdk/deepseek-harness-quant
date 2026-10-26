@@ -51,6 +51,14 @@ def start_harness(base: Path):
     if not node:
         print("[QuantDeck] 未检测到 Node.js —— HARNESS 对话功能跳过（量化系统照常）")
         return None
+    try:
+        node_version = subprocess.check_output([str(node), "--version"], text=True, timeout=10).strip()
+        if int(node_version.lstrip("v").split(".")[0]) < 24:
+            print(f"[QuantDeck] Node.js {node_version} 过旧 —— 本项目 HARNESS 需要 Node.js 24+，对话功能跳过")
+            return None
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        print(f"[QuantDeck] 无法检查 Node.js 版本 —— HARNESS 对话功能跳过: {exc}")
+        return None
     if not dsh_bin.exists():
         print("[QuantDeck] harness 运行时缺失 —— 请先运行 harness/install.cmd 安装 HARNESS")
         return None
@@ -81,21 +89,35 @@ def _open_browsers():
 
 def main():
     base = base_dir()
-    if not os.environ.get("LWQUANT_CACHE_DIR"):
-        os.environ["LWQUANT_CACHE_DIR"] = str(base / "data")
-    data_dir = os.environ["LWQUANT_CACHE_DIR"]
+    if not getattr(sys, "frozen", False):
+        python = _builtin_python() or base / ".venv" / "Scripts" / "python.exe"
+        if (python.exists() and Path(sys.executable).resolve() != python.resolve()
+                and Path(sys.prefix).resolve() != python.parent.parent.resolve()):
+            return subprocess.call([str(python), str(base / "launcher.py"), *sys.argv[1:]], cwd=base)
+    os.chdir(base)
+    from data.cache import CACHE_DIR
+    data_dir = str(CACHE_DIR)
     print(f"[QuantDeck] 数据目录: {data_dir}")
     if not (Path(data_dir) / "bars.db").exists():
         print("[QuantDeck] 提示: 未检测到 bars.db —— 请先获取数据（docs/快速开始.md §3），或使用演示数据模式")
 
+    from deck.deck_server import Handler, PORT, ResearchHTTPServer, RESEARCH_LOCK
+    # 先占端口再启动其他服务：端口已被旧进程占用时直接说明，不会和旧版本共用端口。
+    try:
+        srv = ResearchHTTPServer(("127.0.0.1", PORT), Handler)
+    except OSError:
+        print(f"[QuantDeck] 端口 {PORT} 已被占用：平台可能已在运行，或上次的窗口还没关闭。"
+              f"请先关闭旧窗口再启动；直接打开 http://127.0.0.1:{PORT} 可使用正在运行的平台。")
+        return 1
+
     start_harness(base)                 # HARNESS（可选，:3080）
     threading.Thread(target=_open_browsers, daemon=True).start()
 
-    from deck.deck_server import Handler, PORT
-    from http.server import ThreadingHTTPServer
-
     print(f"[QuantDeck] 量化系统已启动: http://127.0.0.1:{PORT}  （Ctrl+C 退出）")
-    srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
+    from data.market_dashboard import startup
+    startup()
+    from backtest.research_automation import start_scheduler
+    start_scheduler(RESEARCH_LOCK)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
@@ -105,4 +127,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

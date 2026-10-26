@@ -7,6 +7,10 @@ __pycache__/
 
 # ---- 本地配置（含真实密钥，勿提交） ----
 config/params.yaml
+config/akshare.yaml
+config/research.yaml
+config/research_strategies.yaml
+config/navigation.yaml
 harness/home/.credentials.yaml
 
 # ---- HARNESS 运行时与用户数据 ----
@@ -15,6 +19,8 @@ harness/home/sessions/
 harness/home/storages/
 harness/home/profiles/web/node_modules/
 harness/home/.anonymous-user-id
+harness/home/*.imported
+harness/home/.credentials.yaml.lock
 harness/home/.credentials.yaml
 
 # ---- 数据（Tushare 协议：不得再分发；请自行获取） ----
@@ -56,3 +62,21 @@ harness/home/profiles/node_modules/
 # ---- 内部维护文档（含本机路径，不进公开仓库） ----
 docs/上传GitHub.md
 docs/发布清单_v1.0.9.md
+
+config/factor_library.yaml
+config/alpha101.yaml
+config/research_presets.yaml
+config/research_factors.yaml
+config/research_services.yaml
+config/research_ml.yaml
+config/research_references.yaml
+config/market_dashboard.yaml
+config/backtest_report.yaml
+config/research_patterns.yaml
+config/research_controls.yaml
+config/research_workflow.yaml
+config/dual_momentum.yaml
+config/market_analysis.yaml
+config/stock_profile.yaml
+config/niu_research.json
+harness/home/settings.yaml

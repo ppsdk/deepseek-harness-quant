@@ -585,7 +585,8 @@ def live_tech() -> dict:
     """科技突破池全量（logs/tech_pitch_*.json 最新）"""
     d = _read("tech_pitch_*.json")
     if not d:
-        return {"ok": False, "error": "tech_pitch 未生成"}
+        return {"ok": True, "state": "not_generated", "entries": [],
+                "message": "短线 Pitch 尚未生成；日线下载不会自动生成候选和历史验证结果。"}
     return {
         "ok": True,
         "ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -2762,7 +2763,7 @@ def live_factor_dash() -> dict:
     if _fd_cache["data"] is not None and _now - _fd_cache["ts"] < 60:
         return _fd_cache["data"]
     out = {"ok": True, "schema_version": "1.0", "ts": datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-    _SD = "data/factorpool/output"
+    _SD = str(BASE / "data/factorpool/output")
     try:
         # 1) manifest 全因子（mtime 取最新）
         _mf = sorted(glob.glob(_SD + "/factor_manifest_*.json"), key=os.path.getmtime)
@@ -2780,6 +2781,34 @@ def live_factor_dash() -> dict:
             for f in _mj.get("factors", []):
                 c = f.get("category", "其他")
                 out["categories"][c] = out["categories"].get(c, 0) + 1
+        else:
+            from factors.factor_engine import FACTOR_FUNCS, DEFAULT_DIRECTION
+            direction = dict(DEFAULT_DIRECTION)
+            import yaml
+            params = BASE / "config/params.yaml"
+            if params.exists():
+                cfg = yaml.safe_load(params.read_text(encoding="utf-8")) or {}
+                direction.update((cfg.get("factors") or {}).get("direction") or {})
+            out["state"] = "basic_only"
+            out["message"] = "本机基础因子可直接用于策略组合、选股与回测。ICIR 和历史体检尚未运行，不能据此认定因子有效；扩展因子包为可选模块。"
+            out["manifest"] = {"date": "", "n": len(FACTOR_FUNCS), "health_stale": False,
+                               "factors": [{"code": name, "name_cn": name,
+                                            "category": "基础引擎", "direction": direction.get(name),
+                                            "icir_60": None, "status": "未验证"}
+                                           for name in FACTOR_FUNCS]}
+            out["categories"] = {"基础引擎": len(FACTOR_FUNCS)}
+            if (BASE / 'config/factor_library.yaml.example').exists():
+                from backtest.research_runner import research_config
+                catalog = research_config()['factor_catalog']
+                out['state'] = 'research_library'
+                out['message'] = '研究指标库已接入技术指标、基本面与 Alpha101。缺数据的项目会说明原因；历史收益检查尚未运行。'
+                out['manifest']['n'] = len(catalog)
+                out['manifest']['factors'] = [dict(code=k, name_cn=f['label'], category=f['category'],
+                                                   direction=f['default_sign'], icir_60=None,
+                                                   status='未验证', data_note=f['data_note']) for k, f in catalog.items()]
+                out['categories'] = {}
+                for f in catalog.values():
+                    out['categories'][f['category']] = out['categories'].get(f['category'], 0) + 1
         # 2) health 体检（mtime 取最新）
         _hf = sorted(glob.glob(_SD + "/health/health_*.csv"), key=os.path.getmtime)
         if _hf:
@@ -2890,6 +2919,8 @@ def live_portal_dash() -> dict:
         if _tl.exists():
             import json as _jtl
             out["traffic_light"] = _jtl.loads(_tl.read_text(encoding="utf-8"))
+        else:
+            out["traffic_light"] = {"available": False, "message": "尚无沪深 300 月线择时产物，无法计算 MA6/MA12 趋势。A 股个股日线下载不包含该指数；可在研究工作台查看个股行情与策略结果。"}
     except Exception:
         pass
     try:
@@ -3096,9 +3127,38 @@ def live_data_assets() -> dict:
 #   60s 缓存（盘中频繁请求不重复拉；非交易时段自动降级返回最近快照）
 # ══════════════════════════════════════════════════════════════════
 _rt_cache = {"ts": 0.0, "data": None, "err": None}
+import threading as _rt_threading
+_rt_lock = _rt_threading.Lock()
+_rt_running = False
+_rt_attempt = 0.0
 
 
 def live_realtime() -> dict:
+    """Refresh in one background worker so a slow upstream cannot block the UI."""
+    global _rt_running, _rt_attempt
+    with _rt_lock:
+        if not _rt_running and time.time() - _rt_attempt >= 60:
+            _rt_running = True
+            _rt_attempt = time.time()
+            def refresh():
+                global _rt_running
+                try:
+                    _fetch_realtime()
+                finally:
+                    with _rt_lock:
+                        _rt_running = False
+            _rt_threading.Thread(target=refresh, daemon=True).start()
+        if _rt_cache["data"] is not None:
+            out = dict(_rt_cache["data"])
+            if _rt_cache["err"] or time.time() - _rt_cache["ts"] >= 60:
+                out["stale"] = True
+            return out
+        return {"ok": False, "state": "loading" if _rt_running else "unavailable",
+                "market_open": False,
+                "error": _rt_cache["err"] or "正在获取新浪行情快照，请稍后刷新。"}
+
+
+def _fetch_realtime() -> dict:
     """盘中实时行情快照：涨跌家数/涨停数/成交额/涨跌幅分布/领涨领跌。
     数据源：新浪实时快照（akshare stock_zh_a_spot，60s 缓存）。
     非交易时段（周末/盘前/盘后）返回最近一次快照 + market_open=False。"""
@@ -3112,8 +3172,6 @@ def live_realtime() -> dict:
            "ts": datetime.now().strftime("%H:%M:%S"),
            "source": "sina_realtime"}
     try:
-        import socket as _sk
-        _sk.setdefaulttimeout(20)
         import akshare as _ak
         import pandas as _pd
         df = _ak.stock_zh_a_spot()   # 新浪全市场实时（5542 只）

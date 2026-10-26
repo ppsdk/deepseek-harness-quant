@@ -1,0 +1,57 @@
+# 个股详情：实时行情、公司概况、财务摘要、本机日线统计。
+# 第三方数据只缓存在本机 cache_dir（output/ 不入库、不再分发）。
+cache_dir: output/stock_profiles
+quote:
+  source: 腾讯证券行情（qt.gtimg.cn）
+  url: https://qt.gtimg.cn/q={symbol}
+  timeout_seconds: 4
+  cache_seconds: 20
+  encoding: gbk
+  # 腾讯行情字符串按 ~ 分隔后的位置；数据源调整字段时只需改这里。
+  fields:
+    name: {index: 1, label: 名称, type: text}
+    price: {index: 3, label: 最新价}
+    prev_close: {index: 4, label: 昨收}
+    open: {index: 5, label: 今开}
+    time: {index: 30, label: 行情时间, type: text}
+    change: {index: 31, label: 涨跌}
+    pct: {index: 32, label: 涨跌幅, unit: '%', tone: true}
+    high: {index: 33, label: 最高}
+    low: {index: 34, label: 最低}
+    amount: {index: 37, label: 成交额, unit: 万元}
+    turnover: {index: 38, label: 换手率, unit: '%'}
+    pe_ttm: {index: 39, label: 市盈率TTM}
+    amplitude: {index: 43, label: 振幅, unit: '%'}
+    float_cap: {index: 44, label: 流通市值, unit: 亿元}
+    total_cap: {index: 45, label: 总市值, unit: 亿元}
+    pb: {index: 46, label: 市净率}
+    limit_up: {index: 47, label: 涨停价}
+    limit_down: {index: 48, label: 跌停价}
+    volume_ratio: {index: 49, label: 量比}
+  tiles: [price, pct, amount, turnover, pe_ttm, pb, total_cap, float_cap, volume_ratio, amplitude]
+profile:
+  source: 巨潮资讯公司概况（AKShare stock_profile_cninfo）
+  max_age_days: 30
+  fields: [公司名称, 所属行业, 所属市场, 上市日期, 入选指数, 主营业务, 法人代表, 官方网站, 注册地址]
+  long_fields: [主营业务, 入选指数]
+financial:
+  source: 同花顺财务摘要（AKShare stock_financial_abstract_ths，按报告期）
+  max_age_days: 7
+  periods: 8
+  columns: [报告期, 营业总收入, 营业总收入同比增长率, 净利润, 净利润同比增长率, 扣非净利润同比增长率, 净资产收益率, 销售毛利率, 销售净利率, 每股经营现金流, 资产负债率]
+local_stats:
+  lookback_days: 420
+  return_windows: [5, 20, 60, 250]
+  volatility_days: 20
+  turnover_days: 20
+ai:
+  prompt: |
+    你是A股基本面研究助手。根据下面的个股资料（实时行情、公司概况、财务摘要、本机日线统计），用中文按以下结构分析，结论先行，总长不超过800字：
+    1. 业务与行业：公司靠什么赚钱，所处行业的景气特征。
+    2. 成长性：营收、净利润、扣非净利润的增速趋势（加速/放缓/转负），季节性要说明。
+    3. 盈利质量：ROE、毛利率、净利率的水平与变化；每股经营现金流是否支撑利润。
+    4. 财务风险：资产负债率等，行业特性不同时不要硬比。
+    5. 估值：PE/PB 与增速是否匹配（可粗算PEG），说明估值只用当前数据，不代表历史分位。
+    6. 价格位置：距一年高点、近期涨跌和波动，说明技术位置对研究的意义。
+    7. 结论：基本面强/中/弱的研究评级、最值得跟踪验证的2-3个问题、主要风险。
+    只用资料中的数字，缺失就写“资料未提供”，不编造。这是研究讨论，不构成投资建议，不给出买卖指令。

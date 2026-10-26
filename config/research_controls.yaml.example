@@ -1,0 +1,98 @@
+# All editable indicator fields and portfolio defaults come from this API-owned file.
+max_indicator_groups: 40
+warmup_calendar_multiplier: 3
+metadata_cache_seconds: 5
+archive_cache_entries: 128
+page_sizes: {factors: 20, strategies: 12, backtests: 15, stocks: 30}
+parameter_fields:
+  n: {label: 计算周期（根K线）, min: 2, max: 1000, step: 1, integer: true}
+  fast: {label: 短周期, min: 1, max: 500, step: 1, integer: true}
+  slow: {label: 长周期, min: 2, max: 1000, step: 1, integer: true}
+  signal: {label: 信号平滑周期, min: 1, max: 500, step: 1, integer: true}
+  smooth: {label: 平滑周期, min: 1, max: 100, step: 1, integer: true}
+  k: {label: 标准差倍数, min: 0.1, max: 10, step: 0.1}
+  scale: {label: CCI缩放系数, min: 0.001, max: 1, step: 0.001}
+  window: {label: 滤波窗口（根日线）, min: 2, max: 500, step: 1, integer: true}
+  sigma: {label: 平滑范围（越大越平滑）, min: 0.1, max: 200, step: 0.1}
+  atr_period: {label: ATR波动计算周期, min: 2, max: 500, step: 1, integer: true}
+  bands_atr: {label: 通道宽度（ATR倍数）, min: 0.1, max: 20, step: 0.1}
+  slope_bars: {label: 对比几根之前的平滑线, min: 1, max: 100, step: 1, integer: true}
+  max_hold: {label: 信号最多保留几根日线, min: 1, max: 500, step: 1, integer: true}
+  range_bars: {label: 历史箱体周期, min: 5, max: 500, step: 1, integer: true}
+  volume_bars: {label: 平均成交量周期, min: 2, max: 500, step: 1, integer: true}
+  max_range_pct: {label: 箱体最大宽度（%）, min: 1, max: 200, step: 1}
+  max_width_pct: {label: 窄箱体最大宽度（%）, min: 1, max: 100, step: 1}
+  reclaim_position: {label: 收盘在当天区间的位置（0到1）, min: 0.5, max: 1, step: 0.05}
+  spring_volume_min: {label: 收回支撑的最低量比, min: 0.1, max: 10, step: 0.1}
+  break_buffer: {label: 突破余量（0.01表示1%）, min: 0, max: 0.2, step: 0.001}
+  break_volume_min: {label: 放量突破的最低量比, min: 0.1, max: 20, step: 0.1}
+  retest_bars: {label: 突破后几根内寻找回踩, min: 1, max: 200, step: 1, integer: true}
+  retest_tolerance: {label: 回踩容差（0.02表示2%）, min: 0, max: 0.2, step: 0.005}
+  retest_volume_max: {label: 缩量回踩的最高量比, min: 0.1, max: 5, step: 0.1}
+  left: {label: 拐点左侧比较根数, min: 1, max: 20, step: 1, integer: true}
+  right: {label: 拐点右侧等待根数, min: 1, max: 20, step: 1, integer: true}
+  minimum_known_periods: {label: 至少有几个周期可判断, min: 1, max: 3, step: 1, integer: true}
+  context_bars: {label: 此前价格方向的观察周期, min: 2, max: 200, step: 1, integer: true}
+  wick_fraction: {label: 长影线最低占比（0到1）, min: 0.3, max: 0.95, step: 0.05}
+  body_max_fraction: {label: 实体最高占比（0到1）, min: 0.05, max: 0.7, step: 0.05}
+  close_position: {label: 收盘靠近区间端点的程度, min: 0.5, max: 1, step: 0.05}
+  oversold: {label: KDJ低位门槛, min: 0, max: 50, step: 1}
+  overbought: {label: KDJ高位门槛, min: 50, max: 100, step: 1}
+  rsi_period: {label: RSI计算周期, min: 2, max: 500, step: 1, integer: true}
+  min_separation: {label: 两次拐点最少相隔根数, min: 2, max: 250, step: 1, integer: true}
+  max_separation: {label: 两次拐点最多相隔根数, min: 3, max: 500, step: 1, integer: true}
+  price_change_min: {label: 价格至少变化多少（0.01表示1%）, min: 0, max: 0.5, step: 0.001}
+  rsi_change_min: {label: 两次RSI至少相差多少, min: 0.1, max: 50, step: 0.1}
+  bull_rsi_max: {label: 底背离时RSI最高值, min: 1, max: 60, step: 1}
+  bear_rsi_min: {label: 顶背离时RSI最低值, min: 40, max: 99, step: 1}
+shared_groups:
+  technical:kdj:
+    label: KDJ三线（共用参数）
+    operations: [kdj_k, kdj_d, kdj_j]
+  technical:macd:
+    label: MACD（共用参数）
+    operations: [macd_dif, macd_dea, macd_hist, macd_cross]
+legacy_indicators:
+  mom_20: {label: 短期涨跌幅, operation: return_roc, params: {n: 20}, requires: [close]}
+  mom_120: {label: 中期涨跌幅, operation: return_roc, params: {n: 120}, requires: [close]}
+  rps_120: {label: 相对涨跌幅, operation: return_roc, params: {n: 120}, requires: [close]}
+  lowvol_60: {label: 日收益波动率, operation: return_volatility, params: {n: 60}, requires: [close]}
+  near_high_250: {label: 接近历史高点, operation: near_high, params: {n: 250}, requires: [close]}
+  new_high_250: {label: 创历史新高, operation: new_high, params: {n: 250}, requires: [close]}
+  turn_20d: {label: 平均换手率, operation: turn_mean, params: {n: 20}, requires: [turn]}
+parameters:
+  signal_plan_id: {label: 候选股的入场与退出方案, type: select, default: '', options: {'': 不使用候选股信号方案}}
+  indicator_params: {label: 指标参数, type: object, hidden: true, default: {}}
+  target_exposure_pct: {label: 总股票仓位上限（%）, type: number, default: 100, min: 0, max: 100, step: 5}
+  max_position_pct: {label: 单只股票仓位上限（%）, type: number, default: 100, min: 1, max: 100, step: 1}
+  allocation: {label: 资金怎么分配, type: select, default: equal, options: {equal: 等额分配, inverse_volatility: 波动较小的股票多分一些}}
+  allocation_lookback: {label: 分配仓位看几天波动, type: number, default: 20, min: 5, max: 250, step: 1, integer: true}
+  rebalance_threshold_pct: {label: 仓位偏差不足多少不微调（%）, type: number, default: 0, min: 0, max: 20, step: 0.1}
+  stop_loss_pct: {label: 单股亏损多少退出（%，0关闭）, type: number, default: 0, min: 0, max: 90, step: 1}
+  take_profit_pct: {label: 单股盈利多少退出（%，0关闭）, type: number, default: 0, min: 0, max: 1000, step: 1}
+  trailing_stop_pct: {label: 从持仓最高收盘回落多少退出（%，0关闭）, type: number, default: 0, min: 0, max: 90, step: 1}
+  max_holding_days: {label: 最多持有几个交易日（0关闭）, type: number, default: 0, min: 0, max: 2000, step: 1, integer: true}
+  risk_cooldown_days: {label: 止损止盈后暂停买回几天, type: number, default: 3, min: 0, max: 250, step: 1, integer: true}
+parameter_groups:
+  - label: 仓位与资金分配
+    fields: [target_exposure_pct, max_position_pct, allocation, allocation_lookback, rebalance_threshold_pct]
+  - label: 个股退出规则（收盘判断，次日开盘尝试）
+    fields: [signal_plan_id, stop_loss_pct, take_profit_pct, trailing_stop_pct, max_holding_days, risk_cooldown_days]
+strategy_default_keys: [topn, stocks, rebalance_days, target_exposure_pct, max_position_pct, allocation, allocation_lookback, rebalance_threshold_pct, stop_loss_pct, take_profit_pct, trailing_stop_pct, max_holding_days, risk_cooldown_days, indicator_params]
+trigger_labels:
+  rebalance: 策略调仓
+  market_risk_exit: 市场择时退出
+  stop_loss: 个股止损
+  take_profit: 个股止盈
+  trailing_stop: 移动止损
+  max_holding_days: 持有期结束
+  technical_exit: 技术条件退出
+  technical_entry: 技术条件入场
+allocation_labels: {equal: 等额分配, inverse_volatility: 按历史波动率反向分配}
+workflow_steps:
+  - {label: 先准备数据, description: 更新股票日线，确认需要的年份和字段有数据。, url: /data}
+  - {label: 研究因子与策略, description: 调整指标参数、组合选股条件，保存自己的策略。, url: '/research#strategy-editor'}
+  - {label: 选股并保存名单, description: 使用当时的数据选股，把股票代码保存为股票池。, url: '/research#stock-screen'}
+  - {label: 设仓位、成本与回测, description: 先设置风险和费用，再比较策略的历史表现。, url: /backtest}
+  - {label: 比较结果与仓位, description: 查看净值、成交原因、期末持仓与研究备注。, url: /backtests}
+position_note: 仓位按调仓时的开盘估值分配。价格波动或卖不出可能使实际仓位暂时超过上限；未分配部分保留现金。止损止盈用前一收盘判断，次日按真实开盘并计滑点尝试成交，不保证成交在设置的阈值价格。

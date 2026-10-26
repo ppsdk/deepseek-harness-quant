@@ -4,3 +4,37 @@
 - insert:
     - id: dsq-quant-bridge
       name: ./plugins/dsq-quant-bridge.js
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: dataeyes
+    model: deepseek-v4.1-flash-1017
+    reasoningEffort: high
+- id: llm-pi-ai
+  config:
+    providers:
+      dataeyes:
+        displayName: DataEyes
+        apiKeyEnv: DATAEYES_API_KEY
+        api: openai-completions
+        baseURL: https://platform.dataeyes.ai/v1
+        compat:
+          supportsStore: false
+          supportsDeveloperRole: false
+          maxTokensField: max_tokens
+          thinkingFormat: deepseek
+          requiresReasoningContentOnAssistantMessages: true
+        models:
+          - id: deepseek-v4.1-flash-1017
+            name: DeepSeek V4.1 Flash (DataEyes)
+            contextWindow: 1000000
+            maxTokens: 32768
+            input: [text, image]
+            reasoningEfforts:
+              'off': 'off'
+              high: high
+              max: max
+- id: ui-settings-general
+  name: "@deepseek-ai/dsh-client-ui-settings-general"
+  config:
+    welcomeNoticeVersion: 2026-09-28.1

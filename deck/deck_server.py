@@ -25,6 +25,22 @@ API：
 import json
 import re
 
+
+def accepts_gzip(header):
+    """Honor explicit gzip preferences, including fractional quality values."""
+    preferences = {}
+    for item in header.lower().split(','):
+        parts = [p.strip() for p in item.split(';')]
+        quality = 1.
+        try:
+            for param in parts[1:]:
+                if param.startswith('q='):
+                    quality = float(param[2:])
+        except ValueError:
+            quality = 0.
+        preferences[parts[0]] = quality
+    return 0 < preferences.get('gzip', preferences.get('*', 0.)) <= 1
+
 # ★2026-08-13 黑框隐藏（总指挥要求：计划任务/常驻进程不弹黑框，运行完自动关闭不留窗）
 try:
     import ctypes
@@ -43,6 +59,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parent.parent
+if str(BASE) not in sys.path:
+    sys.path.insert(0, str(BASE))
 LOGS = BASE / "logs"
 OUTPUT = BASE / "output"
 REPORT = BASE / "report"
@@ -52,6 +70,7 @@ DECISIONS = LOGS / "deck_decisions.json"
 #   读-改-写（读最新 deck_decisions → append → 写新时间戳文件）存在竞争，
 #   并发审批会丢记录（实测 10 并发仅存 4 条）→ 串行化整个决策读写区
 DECIDE_LOCK = threading.Lock()
+RESEARCH_LOCK = threading.Lock()
 
 
 def _json_safe(o):
@@ -183,8 +202,16 @@ class Handler(BaseHTTPRequestHandler):
 
     def _send(self, code: int, body: bytes, ctype: str = "application/json"):
         try:
+            compressed=False
+            encodings=self.headers.get('Accept-Encoding','')
+            if ctype.startswith('application/json') and len(body)>1024 and accepts_gzip(encodings):
+                import gzip
+                body=gzip.compress(body,compresslevel=4)
+                compressed=True
             self.send_response(code)
             self.send_header("Content-Type", ctype)
+            if compressed:self.send_header('Content-Encoding','gzip')
+            self.send_header('Vary','Accept-Encoding')
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
@@ -236,8 +263,42 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(json.loads(f.read_text(encoding="utf-8")))
             except Exception as e:
                 return self._send_json({"error": str(e)}, 500)
-        if path == "/":   # ★V8 路由切换（#292）：门户 → ui_v2/pages/portal.html（API 驱动静态页，旧 portal_* 模板退役）
+        if path in ("/", "/research"):
+            return self._v2_page("research.html", "research missing")
+        studio_pages = {'/signals':'signals.html','/positions':'positions.html','/strategies':'strategies.html','/backtests':'backtests.html','/ml':'ml.html','/papers':'papers.html','/timing':'timing.html','/market':'market.html','/watchlists':'watchlists.html','/learn':'learn.html'}
+        if path in studio_pages:
+            return self._v2_page(studio_pages[path], 'research page missing')
+        if path.startswith('/api/studio/'):
+            try:
+                from urllib.parse import urlsplit,parse_qs
+                from deck.research_api import get
+                query={k:v[0] for k,v in parse_qs(urlsplit(self.path).query).items()}
+                return self._send_json(get(path,query))
+            except ValueError as error:
+                return self._send_json({'ok':False,'error':str(error)},400)
+            except Exception as error:
+                return self._send_json({'ok':False,'error':str(error)},500)
+        if path == "/overview":
             return self._v2_page("portal.html", "portal missing")
+        if path == "/api/navigation":
+            from backtest.research_workspace import navigation
+            return self._send_json(navigation())
+        if path == "/api/research/fundamentals":
+            try:
+                from data.research_fundamentals import status
+                return self._send_json(status())
+            except Exception as error:
+                return self._send_json({"ok": False, "error": str(error)}, 500)
+        if path == "/api/research/chart":
+            try:
+                from urllib.parse import urlsplit, parse_qs
+                from backtest.research_workspace import chart
+                query = {k: v[0] for k, v in parse_qs(urlsplit(self.path).query).items()}
+                return self._send_json(chart(query))
+            except ValueError as error:
+                return self._send_json({"ok": False, "error": str(error)}, 400)
+            except Exception as error:
+                return self._send_json({"ok": False, "error": str(error)}, 500)
         if path == "/deck.html":   # ★U1-4 301 合并：旧审批台 → /pitch.html（价值+科技并列新审批页）
             return self._redirect("/pitch.html")
         if path == "/index.html":   # ★U1-4 孤儿页 → 门户
@@ -254,6 +315,16 @@ class Handler(BaseHTTPRequestHandler):
             return self._v2_page("report.html", "report missing")
         if path == "/data" or path == "/data.html":   # ★#310 数据资产页（v2：读 /api/live/data_assets 展示 unified.db 可读性）
             return self._v2_page("data.html", "data missing")
+        if path == "/api/data/akshare":
+            try:
+                sys.path.insert(0, str(BASE))
+                from data.akshare_loader import read_status
+                from factors.research_library import read_config
+                info=read_status(summary=True)
+                info['state_label']=read_config('research_services')['download_states'].get(info['state'],'状态未知')
+                return self._send_json({"ok": True, **info})
+            except Exception as error:
+                return self._send_json({"ok": False, "error": str(error)}, 500)
         if path == "/backtest" or path == "/backtest.html":   # ★2026-08-14 回测档案页（读 /api/live/backtest_archive 列出可视化+存档）
             return self._v2_page("backtest.html", "backtest missing")
         if path == "/subj_quant" or path == "/subj_quant.html":   # ★2026-08-14 主观量化融合系统（相对独立页面）
@@ -269,7 +340,8 @@ class Handler(BaseHTTPRequestHandler):
                 _hs = BASE / "output" / "harness_state.json"
                 if _hs.exists():
                     return self._send_json(json.loads(_hs.read_text(encoding="utf-8")))
-                return self._send_json({"harness": {"online": False}, "error": "harness_state.json 未生成"}, 404)
+                return self._send_json({"available": False, "harness": {},
+                                        "message": "尚未生成运行状态快照；AI 对话的连接状态请查看上方对话区域。"})
             except Exception as e:
                 return self._send_json({"error": str(e)}, 500)
         if path == "/api/build_mode":   # ★2026-08-16 构建模式（dev=开发版徽章 / release=公测发布版无徽章；config/ui_build.json 驱动）
@@ -418,25 +490,30 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json({"ok": True, "strategies": list_strategies()})
             except Exception as e:
                 return self._send_json({"ok": False, "error": str(e)}, 500)
+        if path == "/api/research/config":
+            try:
+                from backtest.research_workspace import workspace_config
+                return self._send_json(workspace_config())
+            except Exception as error:
+                return self._send_json({"ok": False, "error": str(error)}, 500)
         if path == "/api/live/backtest_run":   # ★2026-08-14 动态回测（因子页「回测」Tab 按参数即时跑）
+            if not RESEARCH_LOCK.acquire(blocking=False):
+                return self._send_json({"ok": False, "error": "已有回测运行中，请稍后再试。"}, 409)
             try:
                 import urllib.parse
                 q = urllib.parse.parse_qs(self.path.split("?", 1)[1] if "?" in self.path else "")
-                def _g(k, d):
-                    v = (q.get(k) or [d])[0]
-                    return v
                 sys.path.insert(0, str(BASE))
-                from backtest.bt_runner import run_backtest
-                r = run_backtest(strategy=_g("strategy", "tech3"),
-                                 topn=int(_g("topn", "5")),
-                                 stocks=int(_g("stocks", "300")),
-                                 start=_g("start", "2021-01-01"),
-                                 end=_g("end", "2025-12-31"))
+                from backtest.research_runner import run_research
+                r = run_research({key: value[0] for key, value in q.items()})
                 return self._send_json({"ok": True, **r})
+            except ValueError as error:
+                return self._send_json({"ok": False, "error": str(error)}, 400)
             except Exception as e:
                 import traceback as _tb
                 _tb.print_exc()
                 return self._send_json({"ok": False, "error": str(e)}, 500)
+            finally:
+                RESEARCH_LOCK.release()
         if path == "/dashboard.html":   # ★U1-4 301 合并：旧静态系统看板 → /dashboard_live.html（实时系统状态面板）
             return self._redirect("/dashboard_live.html")
         if path == "/dashboard_opp.html":   # ★2026-08-10 机会池看板（UI A4 核心，总指导落地；glob 取最新时间戳版）
@@ -686,7 +763,8 @@ class Handler(BaseHTTPRequestHandler):
             import glob as _glob
             files = sorted(_glob.glob(str(BASE / "logs" / "tech_pitch_*.json")), key=lambda x: Path(x).stat().st_mtime)
             if not files:
-                return self._send_json({"error": "科技池未生成（运行 tech_pitch.py）"}, 404)
+                return self._send_json({"ok": True, "state": "not_generated", "entries": [],
+                                        "message": "短线 Pitch 尚未生成；日线下载不会自动生成候选和历史验证结果。"})
             return self._send_json(json.loads(Path(files[-1]).read_text(encoding="utf-8")))
         if path == "/dashboard_techpitch.html":   # ★2026-08-10 科技突破 Pitch 池页
             import glob as _glob
@@ -699,6 +777,15 @@ class Handler(BaseHTTPRequestHandler):
                 # ★2026-08-11 审批链路修复：/api/decisions 无文件时返回 []（前端审批页依赖空数组初始化）
                 if path == "/api/decisions":
                     return self._send_json([])
+                if path == "/api/pitch_track":
+                    return self._send_json({"ok": True, "state": "not_generated", "entries": [],
+                                            "message": "尚无远期追踪记录。先生成并入池候选，随后按交易日跟踪 T+1/5/20/60。"})
+                if path == "/api/pitch_v2":
+                    return self._send_json({"ok": True, "state": "not_generated", "pitch": [],
+                                            "message": "长线 Pitch 尚未生成；还需要因子评分和相应基本面数据，日线下载不会自动产生推荐。"})
+                if path == "/api/etf_map":
+                    return self._send_json({"ok": True, "state": "not_generated",
+                                            "message": "ETF 映射尚未生成；需要策略收益与 ETF 日线，A 股下载不包含 ETF 数据。"})
                 return self._send_json({"error": f"文件不存在: {f.name if f else path}", "hint": "先运行对应产出脚本"}, 404)
             try:
                 return self._send_json(json.loads(f.read_text(encoding="utf-8")))
@@ -709,10 +796,11 @@ class Handler(BaseHTTPRequestHandler):
                 import glob as _gr
                 _fs = sorted(_gr.glob(str(BASE / "report" / "daily_report_*.md")), key=lambda x: Path(x).stat().st_mtime)
                 if not _fs:
-                    return self._send_json({"ok": False, "error": "日报未生成（等 19:00 自动化）"}, 404)
+                    return self._send_json({"ok": True, "state": "not_generated", "date": None, "markdown": "",
+                                            "message": "尚无已生成的日报。可先在研究工作台添加策略、选股和回测；日报不是研究功能的前置条件。"})
                 _md = Path(_fs[-1]).read_text(encoding="utf-8")
                 _date = re.search(r"daily_report_(\d{4}-\d{2}-\d{2})\.md", _fs[-1]).group(1) if re.search(r"daily_report_(\d{4}-\d{2}-\d{2})\.md", _fs[-1]) else ""
-                return self._send_json({"ok": True, "date": _date, "markdown": _md,
+                return self._send_json({"ok": True, "state": "ready", "date": _date, "markdown": _md,
                                         "path": _fs[-1]})
             except Exception as e:
                 return self._send_json({"error": str(e)}, 500)
@@ -751,6 +839,57 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?")[0]
+        if path.startswith('/api/studio/'):
+            try:
+                from deck.research_api import post
+                return self._send_json(post(path,self._read_json(),RESEARCH_LOCK))
+            except ValueError as error:
+                return self._send_json({'ok':False,'error':str(error)},400)
+            except Exception as error:
+                return self._send_json({'ok':False,'error':str(error)},500)
+        if path in ("/api/research/fundamentals/sync", "/api/research/fundamentals/import"):
+            try:
+                from data.research_fundamentals import sync, import_csv
+                action = sync if path.endswith('/sync') else import_csv
+                return self._send_json(action(self._read_json()))
+            except ValueError as error:
+                return self._send_json({"ok": False, "error": str(error)}, 400)
+            except Exception as error:
+                return self._send_json({"ok": False, "error": str(error)}, 500)
+        if path == "/api/research/strategies":
+            from backtest.research_workspace import save_strategy, StrategyConflict
+            try:
+                return self._send_json(save_strategy(self._read_json()))
+            except StrategyConflict as error:
+                return self._send_json({"ok": False, "error": str(error)}, 409)
+            except ValueError as error:
+                return self._send_json({"ok": False, "error": str(error)}, 400)
+            except Exception as error:
+                return self._send_json({"ok": False, "error": str(error)}, 500)
+        if path == "/api/research/screen":
+            if not RESEARCH_LOCK.acquire(blocking=False):
+                return self._send_json({"ok": False, "error": "已有研究计算运行中，请稍后再试。"}, 409)
+            try:
+                from backtest.research_workspace import screen
+                return self._send_json(screen(self._read_json()))
+            except ValueError as error:
+                return self._send_json({"ok": False, "error": str(error)}, 400)
+            except Exception as error:
+                return self._send_json({"ok": False, "error": str(error)}, 500)
+            finally:
+                RESEARCH_LOCK.release()
+        if path == "/api/research/run":
+            if not RESEARCH_LOCK.acquire(blocking=False):
+                return self._send_json({"ok": False, "error": "已有回测运行中，请稍后再试。"}, 409)
+            try:
+                from backtest.research_runner import run_research
+                return self._send_json(run_research(self._read_json()))
+            except ValueError as error:
+                return self._send_json({"ok": False, "error": str(error)}, 400)
+            except Exception as error:
+                return self._send_json({"ok": False, "error": str(error)}, 500)
+            finally:
+                RESEARCH_LOCK.release()
         if path.startswith("/api/proxy/"):   # ★2026-08-16 反向代理 POST → :3080（删除/批量/清空/发送全走这里）
             import urllib.request as _ur
             import urllib.error as _ue
@@ -1206,9 +1345,27 @@ class Handler(BaseHTTPRequestHandler):
         return self._send_json({"error": f"未知路由 {path}"}, 404)
 
 
+class ResearchHTTPServer(ThreadingHTTPServer):
+    # Browsers request styles, scripts and API data together; the stdlib backlog
+    # of five can refuse connections during a cold page load on Windows.
+    request_queue_size=128
+    # Windows 的 SO_REUSEADDR 允许第二个进程绑定同一端口，请求会随机落到新旧两个服务上。
+    # 关闭后重复启动会直接报“端口被占用”，而不是悄悄共用端口。
+    allow_reuse_address = sys.platform != 'win32'
+
+    def server_bind(self):
+        # 独占端口：即使旧进程开了 SO_REUSEADDR，新进程也不能再绑定同一端口。
+        import socket
+        if sys.platform == 'win32' and hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
 def main():
     port = int(sys.argv[sys.argv.index("--port") + 1]) if "--port" in sys.argv else PORT
-    srv = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    srv = ResearchHTTPServer(("127.0.0.1", port), Handler)
+    from data.market_dashboard import startup
+    startup()
     print(f"★ Deck/看板 服务器已启动：http://127.0.0.1:{port}/deck.html")
     print(f"  看板：http://127.0.0.1:{port}/dashboard.html  （Ctrl+C 退出）")
     try:

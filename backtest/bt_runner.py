@@ -1,16 +1,8 @@
 # -*- coding: utf-8 -*-
-"""动态回测运行器（2026-08-14 用户：回测做成动态，按参数即时跑 + 前端 SVG 渲染）
+"""回测兼容入口。
 
-提供 run_backtest(strategy, topn, stocks, start, end) → 指标 + 净值序列，
-供 /api/live/backtest_run 调用（因子页「回测」Tab 动态跑）。
-
-策略注册表（STRATEGIES，前端 /api/live/backtest_strategies 动态读取）：
-  tech3      技术三因子（rps_120 反转 + lowvol_60 反转 + near_high_250 正向）· 月频
-  script1    大市值三因子（营收增长率 + 市值 + Beta，高增长大市值高Beta）· 月频
-  turn_low   低换手防御（20 日均换手截面最低 TopN，40 交易日调仓）· 防守主方案
-  factor_all 因子全量回测（外包因子池技术面因子逐个 top10% → 归档）· 批处理
-
-性能：价格面板 + 财务/市值数据按 key 缓存，重复跑不重载（首次 ~5-15s → 后续 ~1-2s）。
+公开的 list_strategies / run_backtest 使用 research_runner 的配置目录和成交账本。
+本文件其余 _legacy_* 实现仅保留历史参考，不供当前研究页面调用。
 """
 import sqlite3
 import subprocess
@@ -32,7 +24,7 @@ _PANEL = {"key": None, "closes": None}
 _FIN = None
 _MV = None
 
-# ★2026-08-16 策略注册表（前端菜单 = 本表动态生成；新增策略在此登记 + 在 run_backtest 分发）
+# 历史策略元数据，仅供下面的 legacy 实现参考；当前目录来自 config/research.yaml。
 STRATEGIES = {
     "tech3": {
         "name": "技术三因子", "category": "策略", "instant": True,
@@ -66,6 +58,20 @@ STRATEGIES = {
 
 
 def list_strategies() -> dict:
+    """Current research catalog; legacy implementations below are retained for reference."""
+    from backtest.research_runner import list_strategies as catalog
+    return catalog()
+
+
+def run_backtest(strategy='tech3', topn=None, stocks=None, start=None, end=None, **kwargs):
+    """Canonical dashboard entry: configurable costs and actual trade accounting."""
+    from backtest.research_runner import run_research
+    values = {'strategy': strategy, **kwargs}
+    values.update({k: v for k, v in {'topn': topn, 'stocks': stocks, 'start': start, 'end': end}.items() if v is not None})
+    return run_research(values)
+
+
+def _legacy_list_strategies() -> dict:
     """策略目录（前端菜单/筛选/选择用）——先合并外部注册（config/strategies.yaml）"""
     _load_external_strategies()
     return {k: {**v, "id": k} for k, v in STRATEGIES.items()}
@@ -319,7 +325,7 @@ def _period_backtest(closes, opens, highs, score, topn, rebalance="M"):
     return ret
 
 
-def run_backtest(strategy="tech3", topn=5, stocks=300, start="2021-01-01", end="2025-12-31"):
+def _legacy_run_backtest(strategy="tech3", topn=5, stocks=300, start="2021-01-01", end="2025-12-31"):
     """运行回测 → {metrics, dates, nav, bench_nav, params, elapsed_s}。
     ★每次运行自动存档：历史 JSON（时间戳）+ 当前最新（latest_{key}，同参数覆盖）。
     ★2026-08-16：按 STRATEGIES 注册表分发（tech3/script1/turn_low 即时；factor_all 批处理）。"""
@@ -408,7 +414,3 @@ if __name__ == "__main__":
     m = r["metrics"]
     print(f"tech3: 年化 {m['annual_return']:.1%} 回撤 {m['max_drawdown']:.1%} 夏普 {m['sharpe']:.2f} "
           f"耗时 {r['elapsed_s']}s 样本 {m['n_days']} 天")
-    r2 = run_backtest("script1", 5, 300)
-    m2 = r2["metrics"]
-    print(f"script1: 年化 {m2['annual_return']:.1%} 回撤 {m2['max_drawdown']:.1%} 夏普 {m2['sharpe']:.2f} "
-          f"耗时 {r2['elapsed_s']}s")

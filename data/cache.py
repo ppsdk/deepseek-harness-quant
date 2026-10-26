@@ -15,6 +15,7 @@ adjust：'qfq' 前复权 / 'hfq' 后复权 / 'none' 不复权
 import os
 import sqlite3
 import time
+from contextlib import closing
 from pathlib import Path
 
 import pandas as pd
@@ -123,11 +124,11 @@ class DailyCache:
         return con
 
     def _init_schema(self):
-        with self._conn() as con:
+        with closing(self._conn()) as con,con:
             con.executescript(_SCHEMA)
 
     def _init_schema_inc(self):
-        with self._conn_inc() as con:
+        with closing(self._conn_inc()) as con,con:
             con.executescript(_SCHEMA)
 
     def _writable(self, path=None) -> bool:
@@ -182,7 +183,8 @@ class DailyCache:
                 code, r["date"],
                 _f(r.get("open")), _f(r.get("high")), _f(r.get("low")), _f(r.get("close")),
                 _f(r.get("preclose")), _f(r.get("volume")), _f(r.get("amount")),
-                _f(r.get("turn")), _f(r.get("pct_chg")), int(r.get("is_st") or 0),
+                _f(r.get("turn")), _f(r.get("pct_chg")),
+                None if pd.isna(r.get("is_st")) else int(r.get("is_st")),
                 adjust, source,
             ))
         con = sqlite3.connect(target)
@@ -243,7 +245,8 @@ class DailyCache:
                 str(r["code"]).upper(), r["date"],
                 _f(r.get("open")), _f(r.get("high")), _f(r.get("low")), _f(r.get("close")),
                 _f(r.get("preclose")), _f(r.get("volume")), _f(r.get("amount")),
-                _f(r.get("turn")), _f(r.get("pct_chg")), int(r.get("is_st") or 0),
+                _f(r.get("turn")), _f(r.get("pct_chg")),
+                None if pd.isna(r.get("is_st")) else int(r.get("is_st")),
                 adjust, source,
             ))
         con = sqlite3.connect(target)

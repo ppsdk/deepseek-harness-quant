@@ -1,0 +1,6 @@
+# 旧版模型配置迁移参考；rc.2 正式配置位于 profiles/web/cordis.patch.yml。
+# 不必复制本文件；已有 settings.yaml 将在首次启动时由 DSH 自动迁移。
+agent-default-model:
+  provider: deepseek-official
+  model: deepseek-v4-flash
+  reasoningEffort: max

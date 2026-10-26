@@ -1,0 +1,915 @@
+# 本地可复制为 research_patterns.yaml 覆盖；阈值与识别范围均可调整。
+families:
+  gaussian:
+    label: 高斯滤波
+    requires: &id001
+    - close
+    - high
+    - low
+    warmup_calendar_days: 160
+    params:
+      window: 21
+      sigma: 6.0
+      atr_period: 14
+      bands_atr: 2.0
+      slope_bars: 3
+      max_hold: 40
+    note: 只用当天和过去的价格做单边加权平滑，不使用居中滤波。上、下轨为平滑线加减2倍ATR；通道不是上涨或下跌保证。
+    events:
+      cross_up:
+        label: 上穿高斯线
+        side: bullish
+        description: 收盘从下向上穿过高斯平滑线，且平滑线向上。
+      cross_down:
+        label: 跌破高斯线
+        side: bearish
+        description: 收盘跌回平滑线下方，或平滑线开始向下。
+    visual:
+      lines:
+        center:
+          label: 高斯平滑线
+          overlay: true
+        upper:
+          label: 高斯上轨
+          overlay: true
+        lower:
+          label: 高斯下轨
+          overlay: true
+  wyckoff:
+    label: 威科夫量价识别
+    requires: &id002
+    - open
+    - high
+    - low
+    - close
+    - volume
+    warmup_calendar_days: 240
+    params:
+      range_bars: 40
+      volume_bars: 20
+      max_range_pct: 30
+      reclaim_position: 0.6
+      spring_volume_min: 0.5
+      break_buffer: 0.002
+      break_volume_min: 1.5
+      retest_bars: 20
+      retest_tolerance: 0.02
+      retest_volume_max: 0.9
+      max_hold: 40
+    note: 这是明确条件的威科夫事件识别，不自动断言主力吸筹或完整操盘阶段。支撑、阻力和平均量都来自此前数据；信号在当天收盘后才知道。
+    events:
+      spring:
+        label: 收回支撑
+        side: bullish
+        description: 盘中跌破此前箱体下沿，收盘收回且处于当日区间上部；量比达到最低门槛。对应规则化Spring。
+      strength:
+        label: 放量走强
+        side: bullish
+        description: 收盘突破此前箱体上沿，量比至少1.5。对应规则化SOS。
+      last_support:
+        label: 缩量回踩
+        side: bullish
+        description: 此前20根内发生放量突破，缩量回到当时突破位附近，收盘重新守住且收阳。对应规则化LPS。
+      upthrust:
+        label: 冲高回落
+        side: bearish
+        description: 盘中突破此前箱体上沿，收盘回到区间内且靠近当日下部。对应规则化Upthrust。
+      weakness:
+        label: 放量走弱
+        side: bearish
+        description: 收盘跌破此前箱体下沿，量比至少1.5。对应规则化SOW。
+      last_supply:
+        label: 反抽受阻
+        side: bearish
+        description: 此前20根内放量跌破，缩量反抽当时支撑位，收盘未能站回且收阴。对应规则化LPSY。
+    visual:
+      lines:
+        support:
+          label: 威科夫：此前箱体下沿
+          overlay: true
+        resistance:
+          label: 威科夫：此前箱体上沿
+          overlay: true
+        volume_ratio:
+          label: 当日量 / 此前平均量
+          overlay: false
+          panel: wyckoff_volume
+  dow:
+    label: 多周期道氏结构
+    requires: &id003
+    - high
+    - low
+    - close
+    warmup_calendar_days: 2400
+    params:
+      left: 2
+      right: 2
+      periods:
+        week: W-FRI
+        month: ME
+      minimum_period_bars:
+        week: 3
+        month: 10
+      alignment_periods:
+      - day
+      - week
+      - month
+      minimum_known_periods: 2
+      max_hold: 60
+    note: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
+    events:
+      pivot_high:
+        label: 高点确认
+        side: neutral
+        placement: above
+        description: 局部高点形成后，等待右侧K线完成才确认。
+      pivot_low:
+        label: 低点确认
+        side: neutral
+        placement: below
+        description: 局部低点形成后，等待右侧K线完成才确认。
+      break_up:
+        label: 突破前高
+        side: bullish
+        description: 日线已确认高低点抬高，收盘突破前一日已知的结构高点。
+      break_down:
+        label: 跌破前低
+        side: bearish
+        description: 收盘跌破前一日已经确认的结构低点。
+    visual:
+      lines:
+        support:
+          label: 日线已确认结构低点
+          overlay: true
+        resistance:
+          label: 日线已确认结构高点
+          overlay: true
+        day:
+          label: 日线结构：-1下跌 / 0整理 / 1上涨
+          overlay: false
+          panel: dow_day
+          axis_range:
+          - -1.2
+          - 1.2
+          step: true
+          value_labels:
+            -1: 下跌
+            0: 整理
+            1: 上涨
+        week:
+          label: 已结束周线结构
+          overlay: false
+          panel: dow_week
+          axis_range:
+          - -1.2
+          - 1.2
+          step: true
+          value_labels:
+            -1: 下跌
+            0: 整理
+            1: 上涨
+        month:
+          label: 已结束月线结构
+          overlay: false
+          panel: dow_month
+          axis_range:
+          - -1.2
+          - 1.2
+          step: true
+          value_labels:
+            -1: 下跌
+            0: 整理
+            1: 上涨
+  naked_k:
+    label: 裸K形态
+    requires: &id004
+    - open
+    - high
+    - low
+    - close
+    warmup_calendar_days: 100
+    params:
+      context_bars: 10
+      wick_fraction: 0.6
+      body_max_fraction: 0.3
+      close_position: 0.65
+      max_hold: 10
+    note: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
+    events:
+      engulf_up:
+        label: 看涨吞没
+        side: bullish
+        description: 此前价格走低，前一根收阴，当日阳线实体包住前一根阴线实体。
+      engulf_down:
+        label: 看跌吞没
+        side: bearish
+        description: 此前价格走高，前一根收阳，当日阴线实体包住前一根阳线实体。
+      pin_up:
+        label: 下影拒绝
+        side: bullish
+        description: 此前走低，下影线至少占全天60%，实体不超过30%，收盘靠近上部。
+      pin_down:
+        label: 上影拒绝
+        side: bearish
+        description: 此前走高，上影线至少占全天60%，实体不超过30%，收盘靠近下部。
+      inside_up:
+        label: 内包向上突破
+        side: bullish
+        description: 前一根高低点都在母K线内，今天收盘突破母K线最高价。
+      inside_down:
+        label: 内包向下跌破
+        side: bearish
+        description: 前一根高低点都在母K线内，今天收盘跌破母K线最低价。
+    visual:
+      lines: {}
+  vpts:
+    label: 量价时空
+    requires: &id005
+    - open
+    - high
+    - low
+    - close
+    - volume
+    warmup_calendar_days: 200
+    params:
+      range_bars: 20
+      volume_bars: 20
+      max_width_pct: 12
+      atr_period: 14
+      break_buffer: 0.002
+      break_volume_min: 1.5
+      retest_bars: 20
+      retest_tolerance: 0.02
+      retest_volume_max: 0.8
+      max_hold: 30
+    note: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
+    events:
+      breakout:
+        label: 箱体放量突破
+        side: bullish
+        description: 此前20根价格箱体宽度不超过12%，收盘向上突破且量比至少1.5。
+      breakdown:
+        label: 箱体放量跌破
+        side: bearish
+        description: 此前箱体收窄，收盘向下跌破且量比至少1.5。
+      pullback:
+        label: 突破后缩量回踩
+        side: bullish
+        description: 此前20根内放量突破，今天量比不超过0.8，在当时突破位附近收阳并守住。
+    visual:
+      lines:
+        support:
+          label: 量价箱体下沿
+          overlay: true
+        resistance:
+          label: 量价箱体上沿
+          overlay: true
+        volume_ratio:
+          label: 当日量 / 此前平均量
+          overlay: false
+          panel: vpts_volume
+        tight_days:
+          label: 箱体连续收窄天数
+          overlay: false
+          panel: vpts_time
+  kdj:
+    label: KDJ信号
+    requires: &id006
+    - high
+    - low
+    - close
+    warmup_calendar_days: 160
+    params:
+      n: 9
+      smooth: 3
+      oversold: 30
+      overbought: 70
+      max_hold: 20
+    note: 复用平台9周期RSV与两次1/3指数平滑的K、D，J=3K-2D；K和D均不高于30时金叉，均不低于70时死叉。J可以超出0到100，不截断。
+    events:
+      cross_up:
+        label: KDJ低位金叉
+        side: bullish
+        description: K由下向上穿过D，两条线均不高于30。
+      cross_down:
+        label: KDJ高位死叉
+        side: bearish
+        description: K由上向下穿过D，两条线均不低于70。
+    visual:
+      lines:
+        k:
+          label: K
+          overlay: false
+          panel: kdj
+          guides:
+          - 20
+          - 80
+        d:
+          label: D
+          overlay: false
+          panel: kdj
+          guides:
+          - 20
+          - 80
+        j:
+          label: J（允许超出0至100）
+          overlay: false
+          panel: kdj
+          guides:
+          - 20
+          - 80
+  rsi_divergence:
+    label: RSI顶底背离
+    requires: &id007
+    - high
+    - low
+    - close
+    warmup_calendar_days: 300
+    params:
+      rsi_period: 14
+      left: 2
+      right: 2
+      min_separation: 5
+      max_separation: 60
+      price_change_min: 0.005
+      rsi_change_min: 3
+      bull_rsi_max: 45
+      bear_rsi_min: 55
+      max_hold: 20
+    note: 只识别普通顶/底背离：价格创新低而RSI抬高，或价格创新高而RSI降低。对比已确认拐点，等右侧2根K线结束后才发信号，不把信号补画到拐点当天。
+    events:
+      bullish:
+        label: RSI底背离确认
+        side: bullish
+        description: 第二个已确认低点至少降低0.5%，对应RSI至少抬高3，且不高于45。
+      bearish:
+        label: RSI顶背离确认
+        side: bearish
+        description: 第二个已确认高点至少抬高0.5%，对应RSI至少降低3，且不低于55。
+    visual:
+      lines:
+        rsi:
+          label: RSI 14
+          overlay: false
+          panel: rsi_divergence
+          axis_range:
+          - 0
+          - 100
+          guides:
+          - 30
+          - 70
+      segments: true
+      osc_panel: rsi_divergence
+factors:
+  gaussian_channel:
+    label: 高斯滤波通道
+    description: 只用当天和过去的价格做单边加权平滑，不使用居中滤波。上、下轨为平滑线加减2倍ATR；通道不是上涨或下跌保证。
+    category: 高斯滤波
+    kind: pattern
+    family: gaussian
+    output: center
+    requires: *id001
+    default_sign: 1
+    chart: true
+    warmup_calendar_days: 160
+  gaussian_trend:
+    label: 高斯平滑方向：上涨1、下跌-1
+    description: 只用当天和过去的价格做单边加权平滑，不使用居中滤波。上、下轨为平滑线加减2倍ATR；通道不是上涨或下跌保证。
+    category: 高斯滤波
+    kind: pattern
+    family: gaussian
+    output: trend
+    requires: *id001
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 160
+  wyckoff_events:
+    label: 威科夫：量价事件与支撑阻力
+    description: 这是明确条件的威科夫事件识别，不自动断言主力吸筹或完整操盘阶段。支撑、阻力和平均量都来自此前数据；信号在当天收盘后才知道。
+    category: 威科夫量价识别
+    kind: pattern
+    family: wyckoff
+    output: signal
+    requires: *id002
+    default_sign: 1
+    chart: true
+    warmup_calendar_days: 240
+  wyckoff_spring:
+    label: 威科夫：跌破后收回支撑
+    description: 这是明确条件的威科夫事件识别，不自动断言主力吸筹或完整操盘阶段。支撑、阻力和平均量都来自此前数据；信号在当天收盘后才知道。
+    category: 威科夫量价识别
+    kind: pattern
+    family: wyckoff
+    output: spring
+    requires: *id002
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 240
+  wyckoff_strength:
+    label: 威科夫：放量突破箱体
+    description: 这是明确条件的威科夫事件识别，不自动断言主力吸筹或完整操盘阶段。支撑、阻力和平均量都来自此前数据；信号在当天收盘后才知道。
+    category: 威科夫量价识别
+    kind: pattern
+    family: wyckoff
+    output: strength
+    requires: *id002
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 240
+  dow_structure:
+    label: 日周月道氏结构与确认点
+    description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
+    category: 多周期道氏结构
+    kind: pattern
+    family: dow
+    output: alignment
+    requires: *id003
+    default_sign: 1
+    chart: true
+    warmup_calendar_days: 2400
+  dow_day:
+    label: 日线道氏方向：上涨1、整理0、下跌-1
+    description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
+    category: 多周期道氏结构
+    kind: pattern
+    family: dow
+    output: day
+    requires: *id003
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 2400
+  dow_week:
+    label: 已结束周线道氏方向：上涨1、整理0、下跌-1
+    description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
+    category: 多周期道氏结构
+    kind: pattern
+    family: dow
+    output: week
+    requires: *id003
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 2400
+  dow_month:
+    label: 已结束月线道氏方向：上涨1、整理0、下跌-1
+    description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
+    category: 多周期道氏结构
+    kind: pattern
+    family: dow
+    output: month
+    requires: *id003
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 2400
+  dow_known_periods:
+    label: 道氏结构已有足够历史的周期数
+    description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
+    category: 多周期道氏结构
+    kind: pattern
+    family: dow
+    output: known_periods
+    requires: *id003
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 2400
+  naked_k_events:
+    label: 裸K：吞没、长影线与内包突破
+    description: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
+    category: 裸K形态
+    kind: pattern
+    family: naked_k
+    output: signal
+    requires: *id004
+    default_sign: 1
+    chart: true
+    warmup_calendar_days: 100
+  naked_k_engulfing:
+    label: 裸K：实体吞没方向
+    description: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
+    category: 裸K形态
+    kind: pattern
+    family: naked_k
+    output: engulfing
+    requires: *id004
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 100
+  naked_k_pin_bar:
+    label: 裸K：长影线拒绝方向
+    description: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
+    category: 裸K形态
+    kind: pattern
+    family: naked_k
+    output: pin_bar
+    requires: *id004
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 100
+  naked_k_inside_break:
+    label: 裸K：内包后突破方向
+    description: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
+    category: 裸K形态
+    kind: pattern
+    family: naked_k
+    output: inside_break
+    requires: *id004
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 100
+  vpts_events:
+    label: 量价时空：箱体、量比与突破回踩
+    description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
+    category: 量价时空
+    kind: pattern
+    family: vpts
+    output: signal
+    requires: *id005
+    default_sign: 1
+    chart: true
+    warmup_calendar_days: 200
+  vpts_position:
+    label: 量价时空：价格在此前箱体的位置（%）
+    description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
+    category: 量价时空
+    kind: pattern
+    family: vpts
+    output: position
+    requires: *id005
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 200
+  vpts_support_distance:
+    label: 量价时空：离支撑位多少倍ATR
+    description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
+    category: 量价时空
+    kind: pattern
+    family: vpts
+    output: support_distance
+    requires: *id005
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 200
+  vpts_volume_ratio:
+    label: 量价时空：当日量相对过去平均量
+    description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
+    category: 量价时空
+    kind: pattern
+    family: vpts
+    output: volume_ratio
+    requires: *id005
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 200
+  vpts_tight_days:
+    label: 量价时空：窄箱体连续持续天数
+    description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
+    category: 量价时空
+    kind: pattern
+    family: vpts
+    output: tight_days
+    requires: *id005
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 200
+  kdj_signals:
+    label: KDJ：三线与低位金叉、高位死叉
+    description: 复用平台9周期RSV与两次1/3指数平滑的K、D，J=3K-2D；K和D均不高于30时金叉，均不低于70时死叉。J可以超出0到100，不截断。
+    category: KDJ信号
+    kind: pattern
+    family: kdj
+    output: signal
+    requires: *id006
+    default_sign: 1
+    chart: true
+    warmup_calendar_days: 160
+  rsi_divergence:
+    label: RSI：已确认的顶底背离
+    description: 只识别普通顶/底背离：价格创新低而RSI抬高，或价格创新高而RSI降低。对比已确认拐点，等右侧2根K线结束后才发信号，不把信号补画到拐点当天。
+    category: RSI顶底背离
+    kind: pattern
+    family: rsi_divergence
+    output: signal
+    requires: *id007
+    default_sign: 1
+    chart: true
+    warmup_calendar_days: 300
+  gaussian_signal:
+    label: 高斯滤波：当日信号（1看多、-1看空）
+    description: 只用当天和过去的价格做单边加权平滑，不使用居中滤波。上、下轨为平滑线加减2倍ATR；通道不是上涨或下跌保证。
+    category: 高斯滤波
+    kind: pattern
+    family: gaussian
+    output: signal
+    requires: *id001
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 160
+  gaussian_state:
+    label: 高斯滤波：信号有效持有区间
+    description: 出现看多信号后为1，看空信号后为0；最多保留40根日线。用于次日开盘回测，不是成交保证。
+    category: 高斯滤波
+    kind: pattern
+    family: gaussian
+    output: state
+    requires: *id001
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 160
+  wyckoff_signal:
+    label: 威科夫量价识别：当日信号（1看多、-1看空）
+    description: 这是明确条件的威科夫事件识别，不自动断言主力吸筹或完整操盘阶段。支撑、阻力和平均量都来自此前数据；信号在当天收盘后才知道。
+    category: 威科夫量价识别
+    kind: pattern
+    family: wyckoff
+    output: signal
+    requires: *id002
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 240
+  wyckoff_state:
+    label: 威科夫量价识别：信号有效持有区间
+    description: 出现看多信号后为1，看空信号后为0；最多保留40根日线。用于次日开盘回测，不是成交保证。
+    category: 威科夫量价识别
+    kind: pattern
+    family: wyckoff
+    output: state
+    requires: *id002
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 240
+  dow_signal:
+    label: 多周期道氏结构：当日信号（1看多、-1看空）
+    description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
+    category: 多周期道氏结构
+    kind: pattern
+    family: dow
+    output: signal
+    requires: *id003
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 2400
+  dow_state:
+    label: 多周期道氏结构：信号有效持有区间
+    description: 出现看多信号后为1，看空信号后为0；最多保留60根日线。用于次日开盘回测，不是成交保证。
+    category: 多周期道氏结构
+    kind: pattern
+    family: dow
+    output: state
+    requires: *id003
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 2400
+  naked_k_signal:
+    label: 裸K形态：当日信号（1看多、-1看空）
+    description: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
+    category: 裸K形态
+    kind: pattern
+    family: naked_k
+    output: signal
+    requires: *id004
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 100
+  naked_k_state:
+    label: 裸K形态：信号有效持有区间
+    description: 出现看多信号后为1，看空信号后为0；最多保留10根日线。用于次日开盘回测，不是成交保证。
+    category: 裸K形态
+    kind: pattern
+    family: naked_k
+    output: state
+    requires: *id004
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 100
+  vpts_signal:
+    label: 量价时空：当日信号（1看多、-1看空）
+    description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
+    category: 量价时空
+    kind: pattern
+    family: vpts
+    output: signal
+    requires: *id005
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 200
+  vpts_state:
+    label: 量价时空：信号有效持有区间
+    description: 出现看多信号后为1，看空信号后为0；最多保留30根日线。用于次日开盘回测，不是成交保证。
+    category: 量价时空
+    kind: pattern
+    family: vpts
+    output: state
+    requires: *id005
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 200
+  kdj_signal:
+    label: KDJ信号：当日信号（1看多、-1看空）
+    description: 复用平台9周期RSV与两次1/3指数平滑的K、D，J=3K-2D；K和D均不高于30时金叉，均不低于70时死叉。J可以超出0到100，不截断。
+    category: KDJ信号
+    kind: pattern
+    family: kdj
+    output: signal
+    requires: *id006
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 160
+  kdj_state:
+    label: KDJ信号：信号有效持有区间
+    description: 出现看多信号后为1，看空信号后为0；最多保留20根日线。用于次日开盘回测，不是成交保证。
+    category: KDJ信号
+    kind: pattern
+    family: kdj
+    output: state
+    requires: *id006
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 160
+  rsi_divergence_signal:
+    label: RSI顶底背离：当日信号（1看多、-1看空）
+    description: 只识别普通顶/底背离：价格创新低而RSI抬高，或价格创新高而RSI降低。对比已确认拐点，等右侧2根K线结束后才发信号，不把信号补画到拐点当天。
+    category: RSI顶底背离
+    kind: pattern
+    family: rsi_divergence
+    output: signal
+    requires: *id007
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 300
+  rsi_divergence_state:
+    label: RSI顶底背离：信号有效持有区间
+    description: 出现看多信号后为1，看空信号后为0；最多保留20根日线。用于次日开盘回测，不是成交保证。
+    category: RSI顶底背离
+    kind: pattern
+    family: rsi_divergence
+    output: state
+    requires: *id007
+    default_sign: 1
+    chart: false
+    warmup_calendar_days: 300
+strategies:
+  pattern_gaussian:
+    name: 高斯通道趋势
+    desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有40根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
+    category: 价格结构与量价策略
+    instant: true
+    factor_list:
+    - name: gaussian_state
+      min: 1
+      sign: 1
+    defaults:
+      topn: 5
+      stocks: 100
+      rebalance_days: 1
+  pattern_wyckoff:
+    name: 威科夫量价事件
+    desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有40根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
+    category: 价格结构与量价策略
+    instant: true
+    factor_list:
+    - name: wyckoff_state
+      min: 1
+      sign: 1
+    defaults:
+      topn: 5
+      stocks: 100
+      rebalance_days: 1
+  pattern_naked_k:
+    name: 裸K反转与突破
+    desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有10根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
+    category: 价格结构与量价策略
+    instant: true
+    factor_list:
+    - name: naked_k_state
+      min: 1
+      sign: 1
+    defaults:
+      topn: 5
+      stocks: 100
+      rebalance_days: 1
+  pattern_vpts:
+    name: 量价箱体突破与回踩
+    desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有30根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
+    category: 价格结构与量价策略
+    instant: true
+    factor_list:
+    - name: vpts_state
+      min: 1
+      sign: 1
+    defaults:
+      topn: 5
+      stocks: 100
+      rebalance_days: 1
+  pattern_kdj:
+    name: KDJ低位金叉
+    desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有20根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
+    category: 价格结构与量价策略
+    instant: true
+    factor_list:
+    - name: kdj_state
+      min: 1
+      sign: 1
+    defaults:
+      topn: 5
+      stocks: 100
+      rebalance_days: 1
+  pattern_rsi_divergence:
+    name: RSI底背离确认
+    desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有20根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
+    category: 价格结构与量价策略
+    instant: true
+    factor_list:
+    - name: rsi_divergence_state
+      min: 1
+      sign: 1
+    defaults:
+      topn: 5
+      stocks: 100
+      rebalance_days: 1
+  pattern_dow:
+    name: 道氏结构：确认突破前高
+    desc: 确认高低点抬高并突破已知前高后进入候选；结构走弱、跌破前低或最多60根日线后退出。拐点确认前不提前交易。
+    category: 价格结构与量价策略
+    instant: true
+    factor_list:
+    - name: dow_state
+      min: 1
+      sign: 1
+    defaults:
+      topn: 5
+      stocks: 100
+      rebalance_days: 1
+  pattern_dow_day_week:
+    name: 道氏结构：日周趋势一致
+    desc: 日线已经突破前高，且日线与已完成周线都为上涨结构。月线仅供图表对照，不以未结束月线替代。
+    category: 价格结构与量价策略
+    instant: true
+    factor_list:
+    - name: dow_state
+      min: 1
+      sign: 1
+    - name: dow_day
+      min: 1
+      sign: 1
+    - name: dow_week
+      min: 1
+      sign: 1
+    defaults:
+      topn: 5
+      stocks: 100
+      rebalance_days: 1
+  pattern_dow_three:
+    name: 道氏结构：日周月趋势一致
+    desc: 日、已完成周、已完成月三种结构都为上涨时参与。至少需要足够历史确认各周期高低点，缺月线历史时不补造信号。
+    category: 价格结构与量价策略
+    instant: true
+    factor_list:
+    - name: dow_day
+      min: 1
+      sign: 1
+    - name: dow_week
+      min: 1
+      sign: 1
+    - name: dow_month
+      min: 1
+      sign: 1
+    defaults:
+      topn: 5
+      stocks: 100
+      rebalance_days: 1
+chart_presets:
+  gaussian:
+    label: 高斯滤波
+    indicators:
+    - gaussian_channel
+    description: 只用当天和过去的价格做单边加权平滑，不使用居中滤波。上、下轨为平滑线加减2倍ATR；通道不是上涨或下跌保证。
+  wyckoff:
+    label: 威科夫量价识别
+    indicators:
+    - wyckoff_events
+    description: 这是明确条件的威科夫事件识别，不自动断言主力吸筹或完整操盘阶段。支撑、阻力和平均量都来自此前数据；信号在当天收盘后才知道。
+  dow:
+    label: 多周期道氏结构
+    indicators:
+    - dow_structure
+    description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
+  naked_k:
+    label: 裸K形态
+    indicators:
+    - naked_k_events
+    description: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
+  vpts:
+    label: 量价时空
+    indicators:
+    - vpts_events
+    description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
+  kdj:
+    label: KDJ信号
+    indicators:
+    - kdj_signals
+    description: 复用平台9周期RSV与两次1/3指数平滑的K、D，J=3K-2D；K和D均不高于30时金叉，均不低于70时死叉。J可以超出0到100，不截断。
+  rsi_divergence:
+    label: RSI顶底背离
+    indicators:
+    - rsi_divergence
+    description: 只识别普通顶/底背离：价格创新低而RSI抬高，或价格创新高而RSI降低。对比已确认拐点，等右侧2根K线结束后才发信号，不把信号补画到拐点当天。
+chart_event_page_size: 12

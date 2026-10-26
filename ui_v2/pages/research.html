@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>量化研究工作台 · DSHQuant</title>
+<link rel="stylesheet" href="/v2/assets/ui_common.css">
+<link rel="stylesheet" href="/v2/assets/app.css"><link rel="stylesheet" href="/v2/assets/studio.css">
+<style>
+ .research-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-top:16px}
+ .research-form{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:12px 0}
+ .research-form label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#a1a1aa}
+ .research-form input,.research-form select,textarea{padding:8px;border:1px solid #34343b;border-radius:6px;background:#17171b;color:#eee;max-width:100%;box-sizing:border-box}
+ .research-form input{width:150px}.research-form select{min-width:180px}textarea{width:100%;min-height:65px;resize:vertical}
+ .research-table{border-collapse:collapse;width:100%;font-size:12px}.research-table td,.research-table th{padding:9px 6px;text-align:left;border-bottom:1px solid #2a2a30}
+ .research-table input[type=number]{width:65px}.research-table select{max-width:110px}.research-table button{cursor:pointer}
+ .research-table input,.research-table select{background:#17171b;color:#eee;border:1px solid #444;border-radius:4px;padding:5px}
+ .status-note{font-size:12px;color:#a1a1aa;line-height:1.9;white-space:pre-line;margin:8px 0}
+ .chart-wrap{min-height:190px}.chart-wrap svg{display:block;width:100%;height:auto}
+ .research-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+ .research-table a{white-space:nowrap}.research-scroll{overflow:auto}.research-table caption{text-align:left;padding:8px;color:#a1a1aa}
+ .lf-btn{background:#202026;color:#ddd;border:1px solid #42424b;border-radius:6px;padding:6px 10px;cursor:pointer}
+ .factor-description{font-size:11px;color:#a1a1aa;margin-top:4px;line-height:1.7}.library-scroll{max-height:455px;overflow:auto}.library-scroll thead{position:sticky;top:0;background:#17171b;z-index:1}.research-table details{max-width:290px;white-space:normal;overflow-wrap:anywhere}.research-table .limit{width:65px}.library-filter{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}.library-filter input,.library-filter select{background:#17171b;color:#eee;border:1px solid #444;padding:7px;border-radius:5px}.indicator-picks{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;max-height:120px;overflow:auto;margin:10px 0}.indicator-picks label{white-space:nowrap}
+</style>
+</head>
+<body style="background:var(--bg);margin:0">
+<div id="sidebar"></div>
+<main class="v2-wrap">
+ <div class="v2-h"><span class="bar"></span><h1>量化研究工作台</h1><span class="sub">挑选股票 · 添加策略 · 查看指标 · 设置费用并回测</span></div>
+ <div class="v2-summary" id="research-data" style="margin-top:14px">读取本地数据状态…</div>
+ <nav id="research-workflow" class="research-workflow" aria-label="研究步骤"></nav>
+ <section id="workbench-market" class="workbench-market" aria-label="市场观察">
+  <div class="status-note">正在读取市场观察数据…</div>
+ </section>
+ <div class="research-grid">
+  <section class="v2-card" id="stock-screen">
+   <h2>策略选股 <span class="tag">选股规则与回测相同</span></h2>
+   <div class="research-form"><label for="research-strategy">选择策略<select id="research-strategy" disabled></select></label></div>
+   <p class="status-note" id="strategy-note"></p>
+   <div class="research-form" id="screen-parameters"></div>
+   <div id="screen-indicator-settings"></div>
+   <div class="research-actions"><button class="v2-btn" id="screen-run" disabled>运行选股</button><a id="research-backtest" href="/backtest">设置滑点并回测</a><button class="lf-btn" id="screen-download" disabled>下载选股结果</button></div>
+   <div class="research-form"><label for="pool-name">给选出的股票起个名字<input id="pool-name" maxlength="80" placeholder="例如：年底低波动股票"></label><button class="lf-btn" id="pool-save" disabled>保存这次选股为股票池</button><a href="/watchlists">查看保存的股票池</a></div>
+   <div id="pool-status" class="status-note" role="status"></div>
+   <div id="screen-status" class="status-note" role="status">加载研究配置…</div>
+   <div class="research-scroll" id="screen-results"></div>
+  </section>
+  <section class="v2-card" id="strategy-editor">
+   <h2>添加 / 编辑策略 <span class="tag">按自己的条件选股</span></h2>
+   <p class="status-note">勾选指标，选择优先高值还是低值，再设置重要程度。可填写数值下限、上限，只保留符合条件的股票；留空表示不限。</p>
+   <button class="lf-btn" id="strategy-load" disabled>把当前策略填入编辑器</button>
+   <div class="research-form">
+    <label for="strategy-id">策略编号<input id="strategy-id" placeholder="小写英文，如 my_reversal" maxlength="64"></label>
+    <label for="strategy-name">策略名称<input id="strategy-name" placeholder="例如：低波动加超卖" maxlength="80"></label>
+   </div>
+   <label class="mini" for="strategy-desc">这套策略怎么选股</label><textarea id="strategy-desc" maxlength="1000"></textarea>
+   <div class="library-filter"><label>指标分类 <select id="factor-category" aria-label="指标分类"></select></label><input id="factor-search" aria-label="搜索指标" placeholder="搜索 RSI、均线、ROE、Alpha101…"><label><input type="checkbox" id="factor-selected">只看已选</label><span id="factor-count" class="mini"></span></div>
+   <div id="library-note" class="status-note"></div>
+   <div class="library-scroll"><table class="research-table"><thead><tr><th>选择指标 / 说明</th><th>排序偏好</th><th>重要程度</th><th>数值下限</th><th>数值上限</th></tr></thead><tbody id="factor-editor"></tbody></table></div>
+   <div class="research-form" id="strategy-defaults"></div>
+   <div id="strategy-indicator-settings"></div>
+   <button class="v2-btn" id="strategy-save" disabled>保存策略</button>
+   <div class="status-note" id="strategy-status" role="status">策略保存在本机，保存和回测不需要调用 AI 模型。</div>
+  </section>
+ </div>
+ <section class="v2-card" style="margin-top:16px">
+  <div class="research-actions"><a href="/signals" id="research-signals-link">保存名单后，设置入场与退出条件</a><a href="/factors">研究与检验自己的指标</a></div><h2>基本面数据 <span class="tag">先取得数据，再按财报选股</span></h2>
+  <p class="status-note">可比较盈利能力、收入增长、利润增长、现金流和估值。财报有发布日期，回测只能用当时已公开的数据。刚获取的财报从获取日的次日起使用；历史回测需要带真实可用日期的旧版本。</p>
+  <div class="research-form"><label for="finance-quarter">财报季度<select id="finance-quarter" disabled></select></label><button class="v2-btn" id="finance-sync" disabled>通过 AKShare 获取财报</button><label for="finance-file">导入历史财务 CSV<input id="finance-file" type="file" accept=".csv,text/csv"></label></div>
+  <label class="mini"><input id="finance-confirm" type="checkbox">我已确认 CSV 的可用日期是这些数值当时已可获得的日期</label>
+  <div class="status-note" id="finance-status" role="status">读取财务数据状态…</div><div class="research-scroll" id="finance-coverage"></div>
+  <details class="status-note"><summary>CSV 怎么填写？</summary><p>首行为 code,metric,value,available_date,report_date。code 用 000001.SZ 这样的完整代码；available_date 是这份数值当时能使用的日期，report_date 是报告期末。百分比填 10 表示 10%。不自动用现在的股价或每股收益推算历史 PE。</p><p id="finance-metrics"></p><p>格式示例（合成数据，请换成自己的记录）：000001.SZ,roe,10,2024-04-02,2023-12-31</p></details>
+ </section>
+ <section class="v2-card" style="margin-top:16px">
+  <h2>个股行情 <span class="tag">K线与技术指标</span></h2>
+  <div class="research-form">
+   <label for="chart-code">股票代码<input id="chart-code" placeholder="完整代码，如 000001.SZ"></label>
+   <label for="chart-start">起始日期<input id="chart-start" type="date"></label>
+   <label for="chart-end">结束日期<input id="chart-end" type="date"></label>
+   <label for="chart-timeframe">K线周期<select id="chart-timeframe"></select></label>
+   <label for="chart-preset">图表组合<select id="chart-preset"><option value="">读取配置…</option></select></label>
+   <button class="v2-btn" id="chart-load" disabled>查看行情</button>
+  </div>
+  <div id="chart-indicators" class="indicator-picks" aria-label="图表指标"></div><p class="status-note" id="chart-guide"></p>
+  <div id="chart-indicator-settings"></div>
+  <div id="chart-overlays"></div>
+  <p class="status-note" id="chart-note">点击选股结果中的“行情”查看该股，或输入已下载的代码。价格已按分红、拆股调整，方便比较前后变化。</p>
+  <div class="chart-wrap" id="stock-chart"></div>
+ </section>
+ <section class="v2-card" style="margin-top:16px" id="stock-profile">
+  <h2>个股基本面 <span class="tag">实时行情 · 公司概况 · 财务摘要</span></h2>
+  <div id="stock-profile-body"><p class="status-note">查看个股行情后，这里显示它的实时行情、公司概况和最近8期财务摘要，并可交给 AI 做基本面分析。</p></div>
+ </section>
+ <p class="status-note">选股结果用于研究，不自动下单。当前股票池可能漏掉已经退市的股票，历史回测收益可能偏高；每套策略都需要检验。</p>
+</main>
+<script src="/v2/core/api.js"></script><script src="/v2/core/render.js"></script>
+<script src="/v2/components/indicator_editor.js"></script><script src="/v2/components/research_chart.js"></script><script src="/v2/components/icons.js"></script><script src="/v2/components/search.js"></script><script src="/v2/components/sidebar.js"></script>
+<script src="/v2/components/overlay_editor.js"></script><script src="/v2/components/stock_profile.js"></script>
+<script src="/v2/components/research_dashboard.js"></script>
+<script>
+(function () {
+ 'use strict';
+ LW.sidebar.render('sidebar', {active:'research'});
+ var cfg, selection = null, chartSequence = 0,screenIndicatorEditor,strategyIndicatorEditor,chartIndicatorEditor,chartOverlayEditor;
+ var $ = function(id){return document.getElementById(id);};
+ var screenKeys = ['end','stocks','topn','codes','timing_rule','timing_index'], defaultKeys = ['topn','stocks','rebalance_days'];
+ function esc(s){return String(s == null ? '' : s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+ function makeFields(host, keys, prefix) {
+  $(host).textContent='';
+  keys.forEach(function(key){
+   var spec=cfg.parameters[key], label=document.createElement('label'), input=document.createElement(spec.type==='select'?'select':'input');
+   label.textContent=key==='end' && prefix==='screen-' ? '按哪一天的数据选股' : spec.label;
+   input.id=prefix+key; if(spec.type==='select'){Object.keys(spec.options).forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=spec.options[v];input.appendChild(o);});}else input.type=spec.type; input.value=spec.default == null ? '' : spec.default;
+   ['min','max','step'].forEach(function(k){if(spec[k]!=null)input[k]=spec[k];});
+   label.htmlFor=input.id;label.appendChild(input);$(host).appendChild(label);
+  });
+ }
+ function filterFactors(){
+  if(!cfg)return;
+  var term=$('factor-search').value.trim().toLowerCase(),cat=$('factor-category').value,selected=0,shown=0;
+  Array.prototype.forEach.call($('factor-editor').rows,function(row){var id=row.dataset.factor,f=cfg.factor_catalog[id],checked=$('factor-'+id).checked;
+   if(checked)selected++;
+   var visible=(!cat||f.category===cat)&&(!term||(id+' '+f.label+' '+f.description).toLowerCase().indexOf(term)!==-1)&&(!$('factor-selected').checked||checked);
+   row.hidden=!visible;if(visible)shown++;
+  });
+  $('factor-count').textContent='已选 '+selected+' 项 · 当前显示 '+shown+' 项';
+  if(strategyIndicatorEditor)strategyIndicatorEditor.setFactors(Object.keys(cfg.factor_catalog).filter(function(id){return $('factor-'+id).checked;}));
+ }
+ $('factor-category').onchange=filterFactors;$('factor-search').oninput=filterFactors;$('factor-selected').onchange=filterFactors;$('factor-editor').onchange=filterFactors;
+ function selectedId(){return $('research-strategy').value;}
+ function updateLink(){
+  var params=new URLSearchParams({strategy:selectedId()});
+  screenKeys.forEach(function(k){params.set(k,$('screen-'+k).value);});
+  if(screenIndicatorEditor)params.set('indicator_params',JSON.stringify(screenIndicatorEditor.get()));
+  $('research-backtest').href='/backtest?'+params.toString();
+  $('research-backtest').textContent='按输入范围回测';
+ }
+ function clearSelection(){selection=null;$('screen-download').disabled=true;$('pool-save').disabled=true;$('pool-status').textContent='';$('screen-results').textContent='';updateLink();}
+ function applyStrategy(){
+  var item=cfg.strategies[selectedId()];if(!item)return;
+  $('strategy-note').textContent=item.desc+'\n'+item.data_note;
+  Object.keys(item.defaults || {}).forEach(function(k){if($('screen-'+k))$('screen-'+k).value=item.defaults[k];});
+  if(screenIndicatorEditor)screenIndicatorEditor.setFactors(item.factors,(item.defaults||{}).indicator_params||{});
+  updateLink();
+ }
+ function loadConfig(target){
+  return LW.api.get('/api/research/config',{bypass:true}).then(function(data){
+   cfg=data;
+   defaultKeys=(cfg.strategy_default_keys||defaultKeys).filter(function(k){return !cfg.parameters[k].hidden;});
+   $('research-workflow').innerHTML=(cfg.workflow_steps||[]).map(function(s,i){return '<a href="'+esc(s.url)+'">'+(i+1)+'. '+esc(s.label)+'<small>'+esc(s.description)+'</small></a>';}).join('');
+   selection=null;$('screen-download').disabled=true;$('pool-save').disabled=true;$('screen-results').textContent='';
+   var sel=$('research-strategy');sel.textContent='';
+   Object.keys(cfg.strategies).forEach(function(id){var o=document.createElement('option');o.value=id;o.textContent=cfg.strategies[id].name+(cfg.strategies[id].available?'':'（需补数据）');sel.appendChild(o);});
+   sel.value=cfg.strategies[target] ? target : cfg.default_strategy;
+   makeFields('screen-parameters',screenKeys,'screen-');makeFields('strategy-defaults',defaultKeys,'default-');
+   screenIndicatorEditor=LW.indicatorEditor.mount('screen-indicator-settings',cfg,[],{},clearSelection);
+   strategyIndicatorEditor=LW.indicatorEditor.mount('strategy-indicator-settings',cfg,[],{});
+   $('factor-editor').textContent='';
+   var categories={};
+   Object.keys(cfg.factor_catalog).forEach(function(id){
+    var f=cfg.factor_catalog[id], tr=document.createElement('tr');tr.dataset.factor=id;
+    categories[f.category]=(categories[f.category] || 0)+1;
+    tr.innerHTML='<td><label><input type="checkbox" id="factor-'+esc(id)+'"> '+esc(f.label)+'</label><div class="factor-description">'+esc(f.description)+'</div><div class="factor-description">'+esc(f.data_note)+'</div>'+(f.formula?'<details><summary>查看原始公式</summary>'+esc(f.formula)+'</details>':'')+'</td>'+
+     '<td><select aria-label="'+esc(f.label)+'排序偏好" id="sign-'+esc(id)+'"><option value="1">优先高值</option><option value="-1">优先低值</option></select></td>'+
+     '<td><input aria-label="'+esc(f.label)+'重要程度" id="weight-'+esc(id)+'" type="number" min="0.01" max="100" step="0.1" value="1"></td>'+
+     '<td><input class="limit" aria-label="'+esc(f.label)+'下限" id="min-'+esc(id)+'" type="number" step="any" placeholder="不限"></td>'+
+     '<td><input class="limit" aria-label="'+esc(f.label)+'上限" id="max-'+esc(id)+'" type="number" step="any" placeholder="不限"></td>';
+    $('factor-editor').appendChild(tr);$('sign-'+id).value=f.default_sign;
+   });
+   $('factor-category').innerHTML='<option value="">全部分类</option>'+Object.keys(categories).map(function(c){return '<option value="'+esc(c)+'">'+esc(c)+'（'+categories[c]+'）</option>';}).join('');
+   $('library-note').textContent='共 '+Object.keys(cfg.factor_catalog).length+' 项指标。缺数据的指标会写明原因，可以先保存组合，补齐数据后再使用。这里的排序偏好是规则设置，不代表已证明有效。';
+   $('chart-indicators').innerHTML=Object.keys(cfg.factor_catalog).filter(function(id){return cfg.factor_catalog[id].chart;}).map(function(id){return '<label><input type="checkbox" value="'+esc(id)+'"> '+esc(cfg.factor_catalog[id].label)+'</label>';}).join('');
+   var chartPrefs={};try{chartPrefs=JSON.parse(localStorage.getItem('research.chart.prefs')||'{}');}catch(e){}
+   var chartQuery=new URLSearchParams(location.search);
+   if(chartQuery.has('indicators'))chartPrefs.indicators=chartQuery.get('indicators').split(',');
+   if(chartQuery.has('indicator_params')){try{chartPrefs.indicator_params=JSON.parse(chartQuery.get('indicator_params'));}catch(e){chartPrefs.indicator_params={};}}
+   $('chart-timeframe').innerHTML=Object.keys(cfg.chart_settings.timeframes).map(function(k){return '<option value="'+esc(k)+'">'+esc(cfg.chart_settings.timeframes[k].label)+'</option>';}).join('');
+   $('chart-timeframe').value=cfg.chart_settings.timeframes[chartPrefs.timeframe]?chartPrefs.timeframe:cfg.chart_settings.default_timeframe;
+   $('chart-preset').innerHTML='<option value="">自选指标</option>'+Object.keys(cfg.chart_settings.pattern_presets||{}).map(function(k){return '<option value="'+esc(k)+'">'+esc(cfg.chart_settings.pattern_presets[k].label)+'</option>';}).join('');
+   $('chart-indicators').querySelectorAll('input').forEach(function(i){i.checked=(chartPrefs.indicators||cfg.chart_settings.default_indicators).includes(i.value);});
+   chartIndicatorEditor=LW.indicatorEditor.mount('chart-indicator-settings',cfg,chartPrefs.indicators||cfg.chart_settings.default_indicators,chartPrefs.indicator_params||{},function(){if($('chart-code').value)loadChart();});
+   var incomingOverlays=null;if(chartQuery.has('overlays')){try{incomingOverlays=JSON.parse(chartQuery.get('overlays'));}catch(e){}}
+   chartOverlayEditor=LW.overlayEditor.mount('chart-overlays',cfg,incomingOverlays||chartPrefs.overlays||[],function(){if($('chart-code').value)loadChart();});
+   $('chart-guide').textContent='可直接选择图表组合，也可逐项勾选。均线、通道在主图，KDJ三线共用副图，道氏日/周/月状态分别显示。形态按日线识别，空心标记是确认后的研究信号，可开启文字；实心买/卖是回测成交。普通技术指标随K线周期计算。最多选择'+cfg.chart_settings.max_indicators+'项组合或指标。';
+   filterFactors();
+   $('chart-start').value=cfg.parameters.start.default;$('chart-end').value=cfg.parameters.end.default;
+   ['research-strategy','screen-run','strategy-load','strategy-save','chart-load'].forEach(function(id){$(id).disabled=false;});
+   $('screen-status').textContent='选择策略及股票范围后运行。空白代码表示按当前缓存代码顺序截取，扩大上限可覆盖更多股票。';
+   applyStrategy();
+   if(target) loadEditor();
+  });
+ }
+ $('research-strategy').onchange=function(){clearSelection();applyStrategy();};
+ $('screen-parameters').oninput=clearSelection;
+ function loadEditor(){
+  var s=cfg.strategies[selectedId()];
+  $('strategy-id').value=s.editable ? s.id : '';$('strategy-name').value=s.name;$('strategy-desc').value=s.desc;
+  Object.keys(cfg.factor_catalog).forEach(function(id){$('factor-'+id).checked=false;$('min-'+id).value='';$('max-'+id).value='';});
+  s.factor_list.forEach(function(f){$('factor-'+f.name).checked=true;$('sign-'+f.name).value=f.sign;$('weight-'+f.name).value=f.weight || 1;$('min-'+f.name).value=f.min==null?'':f.min;$('max-'+f.name).value=f.max==null?'':f.max;});
+  defaultKeys.forEach(function(k){$('default-'+k).value=(s.defaults || {})[k] == null ? cfg.parameters[k].default : s.defaults[k];});
+  filterFactors();
+  strategyIndicatorEditor.setFactors(s.factors,(s.defaults||{}).indicator_params||{});
+  $('strategy-status').textContent=s.editable ? '编辑后保存将更新该自定义策略；已有实验保留原策略定义。' : '已载入内置组合，请填写新的策略编号 后另存。';
+ }
+ $('strategy-load').onclick=loadEditor;
+ $('strategy-save').onclick=function(){
+  var factors=Object.keys(cfg.factor_catalog).filter(function(id){return $('factor-'+id).checked;}).map(function(id){var f={name:id,sign:Number($('sign-'+id).value),weight:Number($('weight-'+id).value)};['min','max'].forEach(function(k){if($(k+'-'+id).value!=='')f[k]=Number($(k+'-'+id).value);});return f;});
+  var defaults={};defaultKeys.forEach(function(k){defaults[k]=$('default-'+k).value;});
+  defaults.indicator_params=strategyIndicatorEditor.get();
+  var payload={id:$('strategy-id').value.trim(),name:$('strategy-name').value,desc:$('strategy-desc').value,factor_list:factors,defaults:defaults,revision:cfg.revision};
+  $('strategy-save').disabled=true;
+  LW.api.post('/api/research/strategies',payload).then(function(r){
+   LW.api.clear();return loadConfig(r.strategy).then(function(){ $('strategy-status').textContent=r.message; });
+  }).catch(function(e){$('strategy-status').textContent='保存失败：'+e.message;}).finally(function(){$('strategy-save').disabled=false;});
+ };
+ $('screen-run').onclick=function(){
+  var values={strategy:selectedId()};screenKeys.forEach(function(k){values[k]=$('screen-'+k).value;});
+  values.indicator_params=screenIndicatorEditor.get();
+  $('screen-run').disabled=true;clearSelection();$('screen-status').textContent='正在使用本地缓存计算收盘排名…';
+  LW.api.post('/api/research/screen',values).then(function(r){
+   selection=r;$('screen-download').disabled=false;
+   $('pool-save').disabled=!r.candidates.length;$('pool-name').value=cfg.strategies[r.strategy].name+' '+r.signal_date;
+   $('screen-status').textContent='使用数据日期 '+r.signal_date+' · 已下载 '+r.data.available_stocks+' 只，本次参与选股 '+r.data.selected_codes.length+' 只\n'+r.message+'\n'+r.warnings.join('\n');
+   if(!r.candidates.length){$('screen-results').textContent='没有符合条件的候选。';return;}
+   $('screen-results').innerHTML='<table class="research-table"><caption>先检查筛选条件，再把各项指标排名，按重要程度合成分数；分数越高越靠前</caption><thead><tr><th>排名</th><th>股票</th><th>综合分数</th><th>收盘</th><th>研究</th></tr></thead><tbody>'+r.candidates.map(function(row){
+    return '<tr><td>'+row.rank+'</td><td>'+esc(row.code)+'<br>'+esc(row.name)+'</td><td title="'+esc(JSON.stringify(row.factor_ranks))+'">'+row.score.toFixed(4)+'</td><td>'+row.close.toFixed(2)+'</td><td><button class="lf-btn" data-code="'+esc(row.code)+'">行情</button></td></tr>';
+   }).join('')+'</tbody></table>';
+  }).catch(function(e){$('screen-status').textContent='选股失败：'+e.message;}).finally(function(){$('screen-run').disabled=false;});
+ };
+ $('screen-results').onclick=function(e){var code=e.target.getAttribute('data-code');if(code){$('chart-code').value=code;$('chart-end').value=selection.signal_date;loadChart();}};
+ $('screen-download').onclick=function(){
+  if(!selection)return;var url=URL.createObjectURL(new Blob([JSON.stringify(selection,null,2)],{type:'application/json'}));
+  var a=document.createElement('a');a.href=url;a.download='screen_'+selection.strategy+'_'+selection.signal_date+'.json';a.click();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+ };
+ $('pool-save').onclick=function(){
+  if(!selection||!selection.candidates.length)return;var b=this;b.disabled=true;
+  LW.api.post('/api/studio/pools',{name:$('pool-name').value,codes:selection.candidates.map(function(r){return r.code;}),signal_date:selection.signal_date,source_strategy:selection.strategy,source_params:selection.params}).then(function(r){
+   $('pool-status').textContent='已保存'+r.count+'只股票。回测开始日必须晚于'+r.signal_date+'；可在股票池页面改用其他策略。';
+   $('research-backtest').href='/backtest?'+new URLSearchParams({strategy:r.source_strategy,pool_id:r.id});LW.api.clear();
+   $('research-backtest').textContent='用已保存股票池回测';
+   $('research-signals-link').href='/signals?pool_id='+encodeURIComponent(r.id);$('research-signals-link').textContent='为「'+r.name+'」设置入场与退出条件';
+  }).catch(function(e){$('pool-status').textContent='保存失败：'+e.message;}).finally(function(){b.disabled=!selection||!selection.candidates.length;});
+ };
+ function drawChart(data){
+  LW.chart.render($('stock-chart'),data,{maxBars:cfg.chart_max_bars});
+  $('chart-note').textContent=data.code+' '+data.name+' · '+data.message+' 可缩放、拖动，支持技术指标副图。';
+  if(LW.stockProfile)LW.stockProfile.show('stock-profile-body',data.code);
+  $('stock-chart').scrollIntoView({behavior:'smooth',block:'center'});
+ }
+ function loadChart(){
+  var seq=++chartSequence,indicators=Array.from($('chart-indicators').querySelectorAll('input:checked')).map(function(i){return i.value;});
+  chartIndicatorEditor.setFactors(indicators);
+  var indicatorParams=chartIndicatorEditor.get();
+  if(indicators.length>cfg.chart_settings.max_indicators){$('chart-note').textContent='最多选择'+cfg.chart_settings.max_indicators+'项指标，请取消几项后重试。';return;}
+  var overlays=chartOverlayEditor?chartOverlayEditor.get():[];
+  try{localStorage.setItem('research.chart.prefs',JSON.stringify({indicators:indicators,timeframe:$('chart-timeframe').value,indicator_params:indicatorParams,overlays:overlays}));}catch(e){}
+  var query=new URLSearchParams({code:$('chart-code').value.trim(),start:$('chart-start').value,end:$('chart-end').value,timeframe:$('chart-timeframe').value,indicators:indicators.join(',')});
+  query.set('indicator_params',JSON.stringify(indicatorParams));
+  if(overlays.length)query.set('overlays',JSON.stringify(overlays));
+  var savedRun=new URLSearchParams(location.search).get('run');if(savedRun)query.set('run',savedRun);
+  $('chart-note').textContent='正在读取缓存行情…';if($('stock-chart')._chartCleanup)$('stock-chart')._chartCleanup();$('stock-chart').textContent='';
+  LW.api.get('/api/research/chart?'+query.toString()).then(function(r){if(seq===chartSequence)drawChart(r);}).catch(function(e){if(seq===chartSequence)$('chart-note').textContent='行情读取失败：'+e.message;});
+ }
+ $('chart-load').onclick=loadChart;
+ $('chart-preset').onchange=function(){var preset=cfg.chart_settings.pattern_presets[this.value];if(!preset)return;$('chart-indicators').querySelectorAll('input').forEach(function(i){i.checked=preset.indicators.includes(i.value);});if($('chart-code').value)loadChart();};
+ $('chart-timeframe').onchange=function(){if($('chart-code').value)loadChart();};
+ LW.search.attach($('chart-code'),{onSelect:function(stock){$('chart-code').value=stock.code;loadChart();}});
+ $('chart-indicators').onchange=function(){if($('chart-code').value)loadChart();};
+ loadConfig(new URLSearchParams(window.location.search).get('strategy')).then(function(){
+  var incoming=new URLSearchParams(window.location.search).get('factor');
+  if(incoming&&cfg.factor_catalog[incoming]){$('factor-'+incoming).checked=true;$('factor-category').value=cfg.factor_catalog[incoming].category;filterFactors();$('strategy-status').textContent='已选中 '+cfg.factor_catalog[incoming].label+'，可继续添加条件并保存。';}
+  var chartIncoming=new URLSearchParams(window.location.search);['start','end'].forEach(function(k){if(chartIncoming.has(k))$('chart-'+k).value=chartIncoming.get(k);});
+  var code=chartIncoming.get('code');if(code){$('chart-code').value=code;if(chartIncoming.get('run')&&!chartIncoming.has('indicator_params')){LW.api.get('/api/studio/experiments?id='+encodeURIComponent(chartIncoming.get('run'))).then(function(r){chartIndicatorEditor.setFactors(Array.from($('chart-indicators').querySelectorAll('input:checked')).map(function(i){return i.value;}),r.params.indicator_params||{});loadChart();}).catch(function(e){$('chart-note').textContent=e.message;});}else loadChart();}
+  return refreshFinance();
+ }).catch(function(e){$('screen-status').textContent='研究配置读取失败：'+e.message;});
+ function refreshFinance(){return LW.api.get('/api/research/fundamentals',{bypass:true}).then(function(d){
+  var quarter=$('finance-quarter'),previous=quarter.value;quarter.innerHTML=d.quarters.slice().reverse().map(function(q){return '<option value="'+esc(q)+'">'+esc(q.slice(0,4)+'-'+q.slice(4,6)+'-'+q.slice(6))+'</option>';}).join('');quarter.value=previous||d.default_quarter;quarter.disabled=false;
+  $('finance-sync').disabled=d.state==='running';$('finance-status').textContent=d.message+'\n'+d.message_data;
+  var ids=Object.keys(cfg?cfg.factor_catalog:{}), metricLabels={};ids.forEach(function(id){var f=cfg.factor_catalog[id];if(f.metric)metricLabels[f.metric]=f.label;});
+  $('finance-metrics').textContent='metric 可填写：'+d.metrics.map(function(k){return k+'（'+(metricLabels[k]||k)+'）';}).join('、');
+  $('finance-coverage').innerHTML='<table class="research-table"><thead><tr><th>已取得指标</th><th>股票数</th><th>可用日期范围</th></tr></thead><tbody>'+Object.keys(d.coverage).map(function(k){var c=d.coverage[k];return '<tr><td>'+esc(metricLabels[k]||k)+'</td><td>'+c.stocks+'</td><td>'+esc(c.first_date)+' 至 '+esc(c.last_date)+'</td></tr>';}).join('')+'</tbody></table>';
+  if(d.state==='running')setTimeout(refreshFinance,4000);
+  else if(d.state==='done'&&window.financeRefreshed!==d.available_date){window.financeRefreshed=d.available_date;LW.api.clear();loadConfig(selectedId());}
+ }).catch(function(e){$('finance-status').textContent='财务数据读取失败：'+e.message;});}
+ $('finance-sync').onclick=function(){ $('finance-sync').disabled=true;LW.api.post('/api/research/fundamentals/sync',{quarter:$('finance-quarter').value}).then(refreshFinance).catch(function(e){$('finance-status').textContent=e.message;$('finance-sync').disabled=false;}); };
+ $('finance-file').onchange=function(){var file=this.files[0];if(!file)return;
+  if(!$('finance-confirm').checked){$('finance-status').textContent='请先确认历史可用日期，再选择 CSV。';this.value='';return;}
+  file.text().then(function(text){return LW.api.post('/api/research/fundamentals/import',{csv:text,confirm_historical_dates:true});}).then(function(r){LW.api.clear();$('finance-status').textContent=r.message;loadConfig(selectedId());refreshFinance();}).catch(function(e){$('finance-status').textContent='导入失败：'+e.message;});this.value='';
+ };
+ refreshFinance();
+ function refreshData(){LW.api.get('/api/data/akshare',{bypass:true}).then(function(d){
+  $('research-data').textContent='AKShare 数据状态：'+(d.state_label || '未知')+' · 已完成 '+(d.completed || 0)+' / '+(d.requested_stocks || 0)+' 只 · 成功 '+(d.successful || 0)+' · 失败 '+(d.failed || 0)+'。研究只使用本地缓存，可在下载期间运行。';
+ }).catch(function(e){$('research-data').textContent='数据状态读取失败：'+e.message;});}
+ refreshData();setInterval(refreshData,60000);
+})();
+</script>
+</body></html>

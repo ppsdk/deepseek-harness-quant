@@ -1,0 +1,189 @@
+sources:
+  joinquant:
+    label: 聚宽官方教程与 API 文档
+    url: https://www.joinquant.com/help/api/help?name=api
+    note: 参考官方实用策略、技术分析和历史财务查询；下列为本地改编，不复制社区收益宣传。
+  alphapurify:
+    label: AlphaPurify
+    url: https://github.com/eliasswu/AlphaPurify
+    note: 参考因子目录、排序相关性、分组表现等研究流程；未运行该库，不提供其行业中性化功能。
+  joinquant_technical:
+    label: 聚宽技术指标文档
+    url: https://www.joinquant.com/help/api/help?name=technicalanalysis
+    note: 已核对MA、RSI和BOLL接口。本地指标使用自己的计算实现，参数与初始化口径见使用文档。
+  backtrader:
+    label: Backtrader
+    url: https://github.com/mementum/backtrader
+    note: 参考均线交叉示例与指标预热；本项目仍使用已有的 T+1 现金持仓账本，没有更换执行引擎。
+tutorials:
+- id: whale_quant
+  title: Datawhale 中文量化课程
+  repository: datawhalechina/whale-quant
+  url: https://github.com/datawhalechina/whale-quant
+  tutorial_url: https://datawhalechina.github.io/whale-quant/
+  category: 入门
+  language: 中文
+  level: 入门
+  license: CC BY-NC-SA 4.0（非商业使用）
+  description: 包含股票数据获取、选股、择时、调仓、回测和机器学习的中文章节与Notebook。README标为内测课程，内容可按章节阅读。
+  next_step: 阅读后在本项目保存一个简单均线策略，再改变费用比较结果。
+  verified_on: '2026-10-26'
+- id: backtrader_tutorial
+  title: Backtrader 官方示例与文档
+  repository: mementum/backtrader
+  url: https://github.com/mementum/backtrader
+  category: 策略回测
+  language: 英文
+  level: 入门至进阶
+  license: GPL-3.0
+  description: 学习数据输入、指标、买卖订单、佣金和策略生命周期，README包含均线交叉示例。
+  next_step: 对照检查信号日、成交日、费用和未成交原因。
+  verified_on: '2026-10-26'
+- id: ta_indicators
+  title: Python 技术指标库 ta
+  repository: bukosabino/ta
+  url: https://github.com/bukosabino/ta
+  category: 技术指标
+  language: 英文
+  level: 入门至进阶
+  license: MIT
+  description: 查看均线、布林带、RSI、成交量等指标的用法和计算接口。
+  next_step: 先读懂指标，再在因子管理中检验；不同库的初始化和缺失值口径可能不同。
+  verified_on: '2026-10-26'
+- id: ml4t
+  title: Machine Learning for Trading 配套代码
+  repository: stefan-jansen/machine-learning-for-trading
+  url: https://github.com/stefan-jansen/machine-learning-for-trading
+  category: 机器学习
+  language: 英文
+  level: 进阶
+  license: MIT
+  description: 包含数据准备、研究流程和模型实验的Notebook及运行说明。代码公开，书籍正文不是本项目提供的免费教材。
+  next_step: 重点学习训练与检验按时间分开、数据泄漏和交易成本。
+  verified_on: '2026-10-26'
+- id: qlib_tutorial
+  title: Qlib 官方教程与研究示例
+  repository: microsoft/qlib
+  url: https://github.com/microsoft/qlib
+  category: 机器学习
+  language: 英文
+  level: 进阶
+  license: MIT
+  description: 官方README链接到Notebook教程，展示数据、模型、预测与回测的研究流程。
+  next_step: 对照本项目的滚动训练记录，检查训练结果截止日是否早于预测日。
+  verified_on: '2026-10-26'
+- id: vnpy_tutorial
+  title: VeighNa 官方中文文档与投研示例
+  repository: vnpy/vnpy
+  url: https://github.com/vnpy/vnpy
+  category: 工程实践
+  language: 中文
+  level: 进阶
+  license: MIT
+  description: 官方仓库包含中文介绍、多因子研究Notebook，以及策略回测和参数优化模块的入口。
+  next_step: 先看alpha_research示例。外部数据服务可能另有账户或授权要求。
+  verified_on: '2026-10-26'
+- id: lean_tutorial
+  title: LEAN 官方文档与算法例子
+  repository: QuantConnect/Lean
+  url: https://github.com/QuantConnect/Lean
+  category: 工程实践
+  language: 英文
+  level: 进阶
+  license: Apache-2.0
+  description: 学习Python/C#算法、事件驱动回测和多资产数据处理；仓库提供官方文档入口。
+  next_step: 比较订单与成本处理，不把其他市场的默认交易规则直接套到A股。
+  verified_on: '2026-10-26'
+- id: tradingview_charts
+  title: TradingView Lightweight Charts 官方示例
+  repository: tradingview/lightweight-charts
+  url: https://github.com/tradingview/lightweight-charts
+  category: 图表
+  language: 英文
+  level: 进阶
+  license: Apache-2.0
+  description: 学习K线、多条价格线、图表交互与指标插件。它是图表库，完整TradingView产品有其他功能。
+  next_step: 本项目参考其主图叠加与指标副图的交互方式，指标数值仍来自本地计算。
+  verified_on: '2026-10-26'
+strategies:
+- id: ma_trend
+  source: joinquant
+  title: 双均线趋势
+  original: 聚宽提供 MA 等技术指标接口；Backtrader 官方示例使用 SMA10 与 SMA30 交叉。
+  adaptation: 本地采用20日均线不低于60日均线，再比较60日涨幅；按设定间隔换股，不等同原交叉策略。
+- id: jq_ma5_filter
+  source: joinquant
+  title: 收盘高于5日均线1%
+  original: 聚宽实用策略示例在前收盘高于MA5的1.01倍时买入，低于MA5时卖出，中间保持持仓。
+  adaptation: 简化为每个换股日筛选偏离MA5至少1%的股票；中间区间也会退出，不复现原持仓状态。
+- id: rsi_oversold
+  source: joinquant_technical
+  title: RSI超卖实验
+  original: 聚宽技术分析接口提供RSI指标。
+  adaptation: 本地筛选14日RSI不超过30，优先低值；阈值和换股规则为本地设定，未经收益验证。
+- id: boll_lower
+  source: joinquant_technical
+  title: 布林带下沿实验
+  original: 聚宽技术分析接口提供布林带指标。
+  adaptation: 本地筛选布林带位置不超过10%，优先低值；不假设必然反弹。
+- id: jq_positive_low_pe
+  source: joinquant
+  title: 正市盈率低于10
+  original: 聚宽财务查询教程展示PE小于10，并组合市值和营业收入筛选，可指定历史查询日期。
+  adaptation: 本地仅采用0小于PE小于等于10的部分，不复制原市值和营收条件；需带可用日期的历史PE记录。
+- id: growth
+  source: joinquant
+  title: 收入利润共同增长
+  original: 聚宽财务API支持在给定日期查询当时已公布的财务指标。
+  adaptation: 收入和利润同比增长均至少10%是本地规则；新获取财报不回填到过去，历史回测需历史版本。
+articles:
+- id: jq_classic21
+  title: 经典策略分析21：小市值选股与本地回测
+  author: penghao
+  url: https://www.joinquant.com/view/community/detail/288d4b6fecaddc0833361211d0efb49a?type=1
+  category: 基本面选股
+  description: 保存的正文介绍小市值选股及JoinQuant、Backtrader、bt本地回测，附有数据下载说明。
+  adaptation: 本地新增“小市值与盈利筛选”，只使用当时可用的市值和ROE；不声称还原隐藏源码。
+  strategy_ids:
+  - small_cap_quality
+  data_note: 需要历史市值和财务版本；原HTML中的策略源码不可见。
+  evidence: 用户提供的保存HTML正文；未取得登录后的隐藏源码
+  license: 原文未声明开源许可证，仅链接与概述
+  verified_on: '2026-10-26'
+- id: jq_etf_discount
+  title: 只买基金：ETF折价思路
+  author: 鬼才量化
+  url: https://www.joinquant.com/view/community/detail/461c7ed12925dd3327634576067ac73e?type=1
+  category: ETF研究
+  description: 正文描述折价筛选、成交额门槛、最多两只基金，并讨论昨日净值滞后和限价单成交问题。
+  adaptation: 作为研究参考收录。没有历史净值可用时间、IOPV及分钟撮合数据时不运行套利回测。
+  strategy_ids: []
+  data_note: 需要ETF历史净值、发布时间、除权信息、分钟成交与买卖价差；当前A股日线不能替代。
+  evidence: 用户提供的保存HTML正文；未取得登录后的隐藏源码
+  license: 原文未声明开源许可证，仅链接与概述
+  verified_on: '2026-10-26'
+- id: jq_etf_execution
+  title: ETF套利回测：开盘成交与限价单检查
+  author: Yg1
+  url: https://www.joinquant.com/view/community/detail/36e4d3f726280067f48a774b8c7084d4?type=1
+  category: ETF研究
+  description: 正文重点指出理想开盘成交与真实流动性的差异，建议用限价、超时撤单和成交量约束检验。
+  adaptation: 本地继续保留滑点、费用、停牌和一字行情拒绝记录；日线无法判断开盘后30分钟限价是否成交。
+  strategy_ids: []
+  data_note: 限价成交、部分成交、撤单需要更细粒度数据；当前未实现ETF申赎套利。
+  evidence: 用户提供的保存HTML正文；未取得登录后的隐藏源码
+  license: 原文未声明开源许可证，仅链接与概述
+  verified_on: '2026-10-26'
+- id: jq_single_factor
+  title: 单因子检验全流程：换手率60日波动
+  author: 良心商人ddj
+  url: https://www.joinquant.com/view/community/detail/641be1e2c31a6cda8e7b8e7ee511574c?type=1
+  category: 因子研究
+  description: 正文覆盖换手波动、预处理、自相关、行业与市值中性化、IC、分组检验和交易成本。
+  adaptation: 新增60日换手波动因子与策略，使用逐日数据检验；不采用跨整年缩尾，不填充未来值。
+  strategy_ids:
+  - turn_stable
+  data_note: 2019年前换手结论无效；历史行业、市值中性化和WLS需要额外历史数据。
+  evidence: 用户提供的保存HTML正文；未取得登录后的隐藏源码
+  license: 原文未声明开源许可证，仅链接与概述
+  verified_on: '2026-10-26'

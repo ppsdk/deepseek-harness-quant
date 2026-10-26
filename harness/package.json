@@ -2,7 +2,10 @@
   "name": "lwquant-harness",
   "private": true,
   "description": "DeepSeek HARNESS runtime bundled with DSHQuant (MIT)",
+  "engines": {
+    "node": ">=24"
+  },
   "dependencies": {
-    "@deepseek-ai/dsh": "0.1.0-rc.6"
+    "@deepseek-ai/dsh": "0.2.1-rc.2"
   }
 }

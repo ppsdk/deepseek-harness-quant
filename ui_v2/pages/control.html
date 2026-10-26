@@ -2,12 +2,13 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>Deepseek HARNESS Quant · 控制</title>
+<title>AI辅助研究 · 量化研究</title>
 <meta http-equiv="Cache-Control" content="no-store">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/v2/assets/ui_common.css">
 <link rel="stylesheet" href="/v2/assets/anim_common.css">
 <link rel="stylesheet" href="/v2/assets/app.css">
+<link rel="stylesheet" href="/v2/assets/studio.css">
 <style>
   .hz-row { display:flex; align-items:center; gap:10px; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,.06); font-size:12px; }
   .hz-row:last-child { border-bottom:none; }
@@ -59,7 +60,7 @@
   .hz-msg.agent { align-self:flex-start; background:#1c1c22; border:1px solid #2a2a30; color:#e4e4e7; border-bottom-left-radius:3px; }
   .hz-msg.sys { align-self:center; background:transparent; color:var(--muted); font-size:11px; padding:2px 8px; }
   .hz-input-row { display:flex; gap:8px; padding:10px 12px; border-top:1px solid #2a2a30; background:#131316; }
-  .hz-input-row input { flex:1; background:#0f0f12; border:1px solid #2a2a30; border-radius:8px; color:#f4f4f5;
+  .hz-input-row input,.hz-input-row textarea { flex:1; background:#0f0f12; border:1px solid #2a2a30; border-radius:8px; color:#f4f4f5;
     font-size:13px; padding:8px 12px; outline:none; }
   .hz-input-row input:focus { border-color:var(--navy2); }
   .hz-session-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px; font-size:12px; color:var(--muted); }
@@ -127,13 +128,13 @@
 <body style="background:var(--bg);margin:0">
 <div id="sidebar"></div>
 <div class="v2-wrap">
-  <div class="v2-h"><span class="bar"></span><h1>控制</h1><span class="sub">DeepSeek HARNESS · 对话 · 状态 · 自主推进</span></div>
-  <div class="mini" style="opacity:.7">量化系统 ←→ HARNESS 对话直连（自动重连） · 完整 GUI 一键弹出 · 30s 状态刷新</div>
+  <div class="v2-h"><span class="bar"></span><h1>AI 辅助研究</h1><span class="sub">解释策略 · 检查回测 · 讨论因子与择时</span></div>
+  <section class="v2-card" style="margin-top:12px"><h2>研究助手</h2><div id="research-ai-content" role="status">读取本机研究目录…</div></section>
 
   <!-- ★2026-08-16 对话区：自绘聊天（健壮连接：超时 + 指数退避重试 + 自动重连） -->
   <div class="v2-card anim-fade-in-up" style="margin-top:12px;padding:14px 16px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-      <h2 style="margin:0;flex:1"> DeepSeek HARNESS · 对话 <span class="tag">原生直连 · 发「1」触发自主推进</span></h2>
+      <h2 style="margin:0;flex:1">研究会话与牛散对话 <span class="tag">选择左侧会话后发送</span></h2>
       <span class="hz-conn-badge" id="hz-conn-badge"><span class="st-dot"></span><span id="hz-conn-txt">连接中…</span></span>
       <button id="hz-import-btn" class="hz-import-btn" title="导入 Skill / Agent 预设">+</button>
       <a class="hz-open-gui" href="http://127.0.0.1:3080" target="_blank" rel="noopener">打开完整 GUI ↗</a>
@@ -153,7 +154,7 @@
       <div class="hz-chat-col">
         <div class="hz-msgs" id="hz-msgs"><div class="hz-msg sys">连接 HARNESS 中…</div></div>
         <div class="hz-input-row">
-          <input id="hz-input" placeholder="发消息给所选会话的 agent（如「1」触发自主推进）…" autocomplete="off">
+          <textarea id="hz-input" rows="3" placeholder="输入研究问题；Enter发送，Shift+Enter换行。"></textarea>
           <button id="hz-send" class="v2-btn">发送</button>
         </div>
       </div>
@@ -161,12 +162,14 @@
     <div class="hz-session-bar">
       <span id="hz-chat-session" class="mini">—</span>
       <span id="hz-chat-status" class="mini">—</span>
-      <span id="hz-snap" class="hz-snap">Pitch 快照: 未加载</span>
+      <span id="hz-snap" class="hz-snap">研究上下文：未加载</span><label class="mini"><input type="checkbox" id="hz-include-portfolio">附加候选卡与当前持仓</label>
       <span style="flex:1"></span>
-      <button id="hz-snap-btn" class="v2-btn" style="padding:3px 10px;font-size:12px">同步 Pitch</button>
-      <a class="mini" href="http://127.0.0.1:3080" target="_blank" rel="noopener" style="color:var(--navy2)">完整 GUI 另开 ↗</a>
+      <button id="hz-snap-btn" class="v2-btn" style="padding:3px 10px;font-size:12px">同步研究数据</button>
     </div>
   </div>
+
+  <!-- 本机定时研究任务：数据与运行记录来自 /api/studio/automation -->
+  <section class="v2-card" style="margin-top:14px"><h2>自动化研究任务 <span class="tag">定时执行 · 不下单</span></h2><div id="research-automation" role="status">读取自动化任务…</div></section>
 
   <!-- 状态与最近推进（两列） -->
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start;margin-top:14px">
@@ -190,7 +193,6 @@
   <div class="v2-card anim-fade-in-up d1" style="margin-top:14px">
     <h2> 快速操作与架构</h2>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">
-      <a class="hz-open-gui" href="http://127.0.0.1:3080" target="_blank" rel="noopener">打开完整 GUI ↗</a>
       <a class="v2-btn" href="/" style="text-decoration:none">返回量化门户</a>
       <button id="hz-refresh" class="v2-btn">刷新状态</button>
     </div>
@@ -227,6 +229,8 @@
 <script src="/v2/components/icons.js"></script>
 <script src="/v2/components/search.js"></script>
 <script src="/v2/components/sidebar.js"></script>
+<script src="/v2/components/research_assistant.js"></script>
+<script src="/v2/components/research_automation.js"></script>
 <script>
 (function () {
   LW.sidebar.render('sidebar', {active: 'control'});
@@ -307,10 +311,11 @@
   function renderMsgs(messages, thinking) {
     var box = document.getElementById('hz-msgs');
     var visible = (messages || []).filter(function (m) {
-      return String(m.text || '').indexOf('【任务】你是「') !== 0;
+      var text=String(m.text||'').trim();
+      return (m.role==='user'||m.role==='assistant')&&text&&text.indexOf('【任务】你是「')!==0&&!/^(?:<system-reminder>|<skill_content>|Current runtime context\. This snapshot supersedes|Time sampled while preparing turn \d+, step \d+:)/.test(text);
     });
     if (!visible.length) {
-      box.innerHTML = '<div class="hz-msg sys">会话为空 —— 发送消息开始对话（发「1」触发自主推进；牛散分类 = 基于量化全量数据的主观选股）</div>';
+      box.innerHTML = '<div class="hz-msg sys">还没有对话。可以直接提问，或先在上方选择策略、股票池和回测结果，生成研究提问。</div>';
       return;
     }
     box.innerHTML = visible.map(function (m) {
@@ -327,8 +332,8 @@
   function targetQuery() {
     if (!curTarget) return null;
     return curTarget.kind === 'niu'
-      ? '/api/proxy/niuapi/recent?persona=' + encodeURIComponent(curTarget.persona) + '&limit=30'
-      : '/api/proxy/quantapi/recent?sessionId=' + encodeURIComponent(curTarget.id) + '&limit=30';
+      ? '/api/proxy/quant/niu/recent?persona=' + encodeURIComponent(curTarget.persona) + '&limit=30'
+      : '/api/proxy/quant/recent?sessionId=' + encodeURIComponent(curTarget.id) + '&limit=30';
   }
   function loadRecent() {
     var q = targetQuery();
@@ -349,7 +354,7 @@
   function relatedRoots() {
     return rootsCache.filter(function (s) {
       if (KEEP_EXCLUDE_TITLES.indexOf(s.title) >= 0) return false;
-      if (!s.preview && !s.role) return false;
+      if (!s.preview && !s.role && !s.current) return false;
       if (sessKw) {
         var hay = ((s.title || '') + ' ' + (s.preview || '')).toLowerCase();
         if (hay.indexOf(sessKw.toLowerCase()) < 0) return false;
@@ -401,7 +406,7 @@
         ev.stopPropagation();
         var sid = lk.getAttribute('data-unlock');
         if (!confirm('解锁该会话？解锁后可从列表删除（若为运行中会话，删除前请确认不再使用）')) return;
-        hzPost('/api/proxy/quantapi/unlock', { sessionId: sid }).then(function (res) {
+        hzPost('/api/proxy/quant/unlock', { sessionId: sid }).then(function (res) {
           if (res && res.ok) {
             loadSessions();
           } else {
@@ -426,7 +431,7 @@
         ev.stopPropagation();
         var sid = btn.getAttribute('data-del');
         if (!confirm('确认删除该对话？（从工作区归档，不可撤销）')) return;
-        hzPost('/api/proxy/quantapi/delete', { sessionId: sid }).then(function (res) {
+        hzPost('/api/proxy/quant/delete', { sessionId: sid }).then(function (res) {
           if (res && res.ok) {
             if (curTarget && curTarget.kind === 'root' && curTarget.id === sid) curTarget = null;
             loadSessions();
@@ -455,7 +460,7 @@
       var ids = Object.keys(selectedSess);
       if (!ids.length) { alert('未勾选任何会话（锁死会话不可选）'); return; }
       if (!confirm('确认删除选中的 ' + ids.length + ' 个对话？（从工作区归档，不可撤销）')) return;
-      hzPost('/api/proxy/quantapi/delete-batch', { sessionIds: ids }).then(function (res) {
+      hzPost('/api/proxy/quant/delete-batch', { sessionIds: ids }).then(function (res) {
         if (res && res.ok) {
           selectedSess = {};
           alert('已删除 ' + res.deleted + ' 个对话' + (res.skipped && res.skipped.length ? '，跳过锁死 ' + res.skipped.length + ' 个' : ''));
@@ -467,7 +472,7 @@
     };
     document.getElementById('hz-clear-all').onclick = function () {
       if (!confirm('⚠️ 一键清空：隐藏本面板所有未锁定的对话！\n仅本面板生效——GUI 面板与聊天历史完全不受影响（可随时点「恢复」找回）。\n\n确认继续？')) return;
-      hzPost('/api/proxy/quantapi/clear-all', {}).then(function (res) {
+      hzPost('/api/proxy/quant/clear-all', {}).then(function (res) {
         if (res && res.ok) {
           selectedSess = {};
           alert('已隐藏 ' + res.deleted + ' 个对话（仅本面板），锁死保留 ' + res.locked + ' 个');
@@ -479,7 +484,7 @@
     };
     /* ★2026-08-16 恢复：清空本面板隐藏名单，全部会话重现（GUI 不受影响） */
     document.getElementById('hz-restore').onclick = function () {
-      hzPost('/api/proxy/quantapi/restore-all', {}).then(function (res) {
+      hzPost('/api/proxy/quant/restore-all', {}).then(function (res) {
         if (res && res.ok) {
           selectedSess = {};
           loadSessions();
@@ -505,78 +510,24 @@
       });
     });
   }
-  /* ★2026-08-16 量化全量快照：聚合择时/持仓/机会池/因子强共识/turn_low/Pitch——牛散能看到所有量化数据 */
+  /* 默认使用本机研究数据；候选卡与持仓由用户选择附加。 */
+  var snapshotSequence=0;
   function buildSnapshot() {
-    var snap = document.getElementById('hz-snap');
-    snap.innerHTML = '量化快照: <b style="color:#a78bfa">聚合中…</b>';
-    return Promise.all([
-      fetch('/api/pitch_v2', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-      fetch('/api/live/holdings', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-      fetch('/api/regime', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-      fetch('/api/pool', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-      fetch('/api/live/strong_hits', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
-      fetch('/api/live/turnlow_top', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; })
-    ]).then(function (res) {
-      var p = res[0], h = res[1], rg = res[2], pool = res[3], hits = res[4], tl = res[5];
-      var lines = [];
-      lines.push('【量化全量数据快照】');
-      lines.push('日期: ' + ((p && p.date) || '—'));
-      if (rg) {
-        var rgt = rg.timing || rg;
-        lines.push('【择时】' + (rgt.level || rg.level || '—') + (rgt.score != null ? ' ' + rgt.score + ' 分' : ''));
-      }
-      var ph = (h && h.position_risk) || {};
-      var holds = ph.per_stock || [];
-      lines.push('【当前持仓 ' + ((ph.n_holdings != null) ? ph.n_holdings : holds.length) + ' 只】' +
-        holds.map(function (x) { return x.code + ' ' + (x.name || ''); }).join(', '));
-      var poolList = (pool && (pool.opportunities || pool.items || pool.pool)) || [];
-      if (Array.isArray(poolList) && poolList.length) {
-        lines.push('【机会池 ' + poolList.length + ' 条】');
-        poolList.slice(0, 15).forEach(function (o) {
-          lines.push('- ' + (o.code || '') + ' ' + (o.name || '') + ' | ' + (o.otype_name || o.otype || '') + ' | 分 ' + (o.score != null ? Math.round(o.score) : '—'));
-        });
-      }
-      var hitList = (hits && (hits.hits || hits.strong_hits)) || [];
-      if (Array.isArray(hitList) && hitList.length) {
-        lines.push('【因子强共识 ' + hitList.length + ' 只】');
-        hitList.slice(0, 10).forEach(function (x) {
-          lines.push('- ' + (x.code || '') + ' ' + (x.name || '') + (x.hits != null ? ' ×' + x.hits + '因子' : ''));
-        });
-      }
-      var tlList = (tl && (tl.top || tl.entries || tl.list)) || [];
-      if (Array.isArray(tlList) && tlList.length) {
-        lines.push('【turn_low 防守 top' + Math.min(10, tlList.length) + '】');
-        tlList.slice(0, 10).forEach(function (x) {
-          lines.push('- ' + (x.code || '') + ' ' + (x.name || ''));
-        });
-      }
-      var pitch = (p && p.pitch) || [];
-      lines.push('【Pitch 候选卡 ' + pitch.length + ' 张】');
-      pitch.forEach(function (c) {
-        var sp = c.stop_plan || {};
-        var stopTxt = sp.desc || (sp.stop_loss_pct != null ? '止损 ' + sp.stop_loss_pct + '%' : '');
-        lines.push('- ' + c.code + ' ' + c.name +
-          ' | 评分 ' + Math.round(c.score || 0) +
-          ' | 胜率 ' + Math.round((c.winrate_est || 0) * 100) + '%' +
-          ' | 预期 +' + Math.round(c.upside_est || 0) + '%' +
-          ' | ' + (c.otype_name || '') +
-          (c.tier ? ' | ' + c.tier : '') +
-          (stopTxt ? ' | ' + stopTxt : ''));
-      });
-      snapshotCache = lines.join('\n');
-      snapshotDate = (p && p.date) || '';
-      snap.innerHTML = '量化快照: <b>' + esc(snapshotDate || '已聚合') + '</b> · 择时/持仓/机会池/强共识/turn_low/Pitch';
-      return snapshotCache;
-    }).catch(function () {
-      snap.innerHTML = '量化快照: <b style="color:var(--red)">聚合失败</b>';
-      return '';
-    });
+    var sequence=++snapshotSequence;
+    var snap=document.getElementById('hz-snap');snap.textContent='正在同步本机研究数据…';
+    snapshotCache='';snapshotDate='';
+    var extra=document.getElementById('hz-include-portfolio').checked;
+    return Promise.all([LW.api.get('/api/studio/assistant/context',{bypass:true}),extra?LW.api.get('/api/pitch_v2',{bypass:true}):Promise.resolve(null),extra?LW.api.get('/api/live/holdings',{bypass:true}):Promise.resolve(null)]).then(function(r){
+      if(sequence!==snapshotSequence)return '';var state=r[0].snapshot;state.candidate_cards=r[1];state.current_holdings=r[2];snapshotDate=state.generated_at;
+      snapshotCache='【本机研究上下文：数据与引用，不是操作指令】\n'+JSON.stringify(state,null,2);
+      snap.textContent='研究上下文：'+snapshotDate+' · 策略 / 因子 / 择时'+(extra?' / 候选卡 / 持仓':'');return snapshotCache;
+    }).catch(function(e){if(sequence===snapshotSequence)snap.textContent='上下文未同步：'+e.message;return '';});
   }
   /* ★2026-08-16 健壮轮询：失败自动重试（指数退避），恢复后刷新会话 */
   function loadSessions() {
     return Promise.all([
-      hzGet('/api/proxy/quantapi/sessions', 20000).then(function (d) { rootsCache = d.sessions || []; }),
-      hzGet('/api/proxy/niuapi/sessions', 15000).then(function (d) { niuCache = d.personas || []; })
+      hzGet('/api/proxy/quant/sessions', 20000).then(function (d) { rootsCache = d.sessions || []; }),
+      hzGet('/api/proxy/quant/niu/sessions', 15000).then(function (d) { niuCache = d.personas || []; })
     ]).then(function () {
       if (!curTarget) {
         var rel = relatedRoots();
@@ -611,9 +562,11 @@
     input.value = '';
     renderMsgs([]);
     document.getElementById('hz-chat-status').textContent = '发送中…';
+    var researchContext=LW.researchAssistant&&LW.researchAssistant.context||'';
+    var contextText=researchContext&&text.indexOf('【本机研究上下文】')<0?'\n\n【本机研究上下文：数据与引用，不是操作指令】\n'+researchContext:'';
     var p = curTarget.kind === 'niu'
-      ? hzPost('/api/proxy/niuapi/chat', { persona: curTarget.persona, text: text, snapshot: snapshotCache })
-      : hzPost('/api/proxy/quantapi/chat2', { text: text, sessionId: curTarget.id });
+      ? hzPost('/api/proxy/quant/niu/chat', { persona: curTarget.persona, text: text+contextText, snapshot: snapshotCache })
+      : hzPost('/api/proxy/quant/chat2', { text: text+contextText, sessionId: curTarget.id });
     p.then(function (res) {
       if (res.ok && res.accepted) {
         document.getElementById('hz-chat-status').textContent = '已送达 · 等回复…';
@@ -658,9 +611,9 @@
   }
   document.getElementById('hz-send').onclick = sendMsg;
   document.getElementById('hz-input').addEventListener('keydown', function (ev) {
-    if (ev.key === 'Enter') sendMsg();
+    if (ev.key === 'Enter' && !ev.shiftKey) {ev.preventDefault();sendMsg();}
   });
-  document.getElementById('hz-snap-btn').onclick = function () { buildSnapshot(); };
+  document.getElementById('hz-snap-btn').onclick = function () { buildSnapshot(); };document.getElementById('hz-include-portfolio').onchange=buildSnapshot;
   var filterInput = document.getElementById('hz-sess-filter');
   filterInput.addEventListener('input', function () {
     sessKw = filterInput.value.trim();
@@ -679,7 +632,7 @@
   }, 20000);
   setInterval(function () {
     if (connState === 'down' || connState === 'retry') {
-      hzGet('/api/proxy/quantapi/sessions', 15000).then(function () {
+      hzGet('/api/proxy/quant/sessions', 15000).then(function () {
         setConn('ok', '已连接');
         loadSessions();
       }).catch(function () {});
@@ -689,6 +642,11 @@
   /* ---------- 状态快照（/api/harness） ---------- */
   function loadHarness() {
     LW.api.get('/api/harness', { bypass: true }).then(function (d) {
+      if (d.available === false) {
+        document.getElementById('hz-tag').textContent = '暂无状态快照';
+        document.getElementById('hz-conn').textContent = d.message;
+        return;
+      }
       if (d.error) {
         document.getElementById('hz-conn').innerHTML = '<span style="color:var(--red)">快照未就绪：' + R._f(d.error) + '</span>';
         return;
@@ -816,6 +774,5 @@
 })();
 </script>
 
-<div class="mini" style="text-align:center;margin-top:18px;opacity:.7"><span class="dsq-brand">Deepseek HARNESS Quant<span class="beta-mark">β</span></span><span style="color:var(--muted)"> · 作者：LW </span><span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#2a2a30;border:1px solid #3a3a44;box-shadow:0 2px 6px rgba(0,0,0,.5)"><svg class="cat-stroll" width="22" height="22" viewBox="0 0 24 24" fill="none"><path class="cat-tail" d="M14.5 17.5c3.2.6 5.2-1.2 5.6-3.8" stroke="#111" stroke-width="2.4" stroke-linecap="round" fill="none"/><path d="M7.4 6.8L6 2.8l3.6 2.6M16.6 6.8L18 2.8l-3.6 2.6" fill="#111" stroke="#111" stroke-width="1"/><circle cx="10.5" cy="9.5" r="4.4" fill="#111"/><ellipse cx="11" cy="16" rx="6" ry="4.4" fill="#111"/><circle cx="8.8" cy="9.2" r="0.9" fill="#4ade80"/><circle cx="12.2" cy="9.2" r="0.9" fill="#4ade80"/><path d="M5.8 10.2h-2.6M6.4 11.6L4 12.8M18.2 10.2h-2.6M17.6 11.6l2.4 1.2" stroke="#555" stroke-width="0.7" stroke-linecap="round"/></svg></span><span style="opacity:.5"> · 低频主观量化 · 宁缺毋滥</span></div>
 </body>
 </html>

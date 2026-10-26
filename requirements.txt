@@ -3,7 +3,7 @@
 
 # ---- 数据源 ----
 baostock>=0.8.9            # 行情主源（稳）
-akshare>=1.15.0            # 覆盖源（业绩快报/机构调研等）
+akshare>=1.19.3            # A股日线/覆盖源；腾讯列单位按此版官方接口契约归一
 tushare>=1.4.0             # 财报主源（ann_date → Point-in-Time，需 token）
 
 # ---- 回测与绩效 ----
@@ -14,6 +14,8 @@ quantstats>=0.0.81         # 绩效指标（实测通过）
 # ---- 数据处理 ----
 numpy>=1.26
 pandas>=2.2
+scikit-learn>=1.4          # 决策树、随机森林与按时间顺序训练
+tzdata>=2024.1             # Windows 时区数据（Asia/Shanghai 收盘日判断与定时任务）
 pyyaml>=6.0                # 读取 config/params.yaml
 
 # ---- 可选 ----

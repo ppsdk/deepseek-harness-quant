@@ -31,10 +31,12 @@ ALLOW_ROOTS = (
 ALLOW_FILES = (
     "launcher.py", "main.py", "dev_auto.py", "README.md", "LICENSE",
     "CHANGELOG.md", "VERSION", ".gitignore", "AGENTS.md",
-    "harness/install.cmd", "requirements.txt",
+    "harness/install.cmd", "harness/setup-key.cjs", "harness/package.json",
+    "harness/package-lock.json", "harness/home/.credentials.yaml.example",
+    "harness/home/settings.yaml.example", "setup_api.cmd", "接入API.cmd", "启动.cmd", "requirements.txt", "requirements-data.txt",
 )
 PROTECT_PREFIXES = (
-    "config/params.yaml", "config/strategies.yaml", "config/etf_pool.yaml",
+    "config/params.yaml", "config/strategies.yaml", "config/etf_pool.yaml", "config/niu_personas.json", "config/akshare.yaml", "config/research.yaml", "config/research_strategies.yaml", "config/navigation.yaml", "config/factor_library.yaml", "config/alpha101.yaml", "config/research_presets.yaml", "config/research_factors.yaml", "config/research_services.yaml", "config/research_ml.yaml", "config/research_references.yaml", "config/research_patterns.yaml", "config/research_controls.yaml", "config/research_workflow.yaml",
     "harness/home/.credentials.yaml", "harness/home/sessions",
     "harness/home/storages", "harness/home/.anonymous-user-id",
     "data/cache", "data/factorpool", "data/trash", "data/demo",

@@ -1,0 +1,304 @@
+seed: 42
+max_stocks: 300
+max_training_samples: 100000
+models:
+  decision_tree:
+    label: 决策树
+    description: 用一棵树学习指标与以后涨跌之间的关系。
+    params:
+      max_depth: 4
+      min_samples_leaf: 30
+  random_forest:
+    label: 随机森林
+    description: 多棵决策树分别学习，再平均预测结果。
+    params:
+      n_estimators: 60
+      max_depth: 5
+      min_samples_leaf: 20
+      n_jobs: 1
+  extra_trees:
+    label: 极端随机树
+    description: 用更随机的切分建立多棵树，再平均结果。
+    params:
+      n_estimators: 60
+      max_depth: 5
+      min_samples_leaf: 20
+      n_jobs: 1
+  gradient_boosting:
+    label: 梯度提升树
+    description: 逐轮补充前面模型没学好的部分。
+    params:
+      n_estimators: 60
+      max_depth: 2
+      learning_rate: 0.05
+      min_samples_leaf: 20
+  ensemble:
+    label: 组合模型：树、森林与提升树
+    description: 平均决策树、随机森林和梯度提升树的预测。
+    params: {}
+    members:
+    - decision_tree
+    - random_forest
+    - gradient_boosting
+  ridge:
+    label: 岭回归
+    description: 用线性关系预测收益，并限制系数大小，适合作为简单基线。
+    params:
+      alpha: 1.0
+    standardize: true
+    max_training_samples: 100000
+  elastic_net:
+    label: 弹性网回归
+    description: 同时限制系数大小并让部分系数变为0，观察哪些指标更有用。
+    params:
+      alpha: 0.0001
+      l1_ratio: 0.5
+      max_iter: 2000
+    standardize: true
+    max_training_samples: 100000
+  knn:
+    label: 近邻回归 KNN
+    description: 寻找指标状态相近的历史样本，平均它们后来的收益。
+    params:
+      n_neighbors: 20
+      weights: distance
+      n_jobs: 1
+    standardize: true
+    max_training_samples: 5000
+  svr:
+    label: 支持向量回归 SVR
+    description: 用核函数学习非线性关系；训练较慢，单次训练最多3000条样本。
+    params:
+      C: 0.1
+      epsilon: 0.01
+      kernel: rbf
+    standardize: true
+    max_training_samples: 3000
+  hist_gradient_boosting:
+    label: 直方图梯度提升树
+    description: 先把数值分桶，再逐轮训练，适合比较更快的提升树。
+    params:
+      max_iter: 60
+      max_leaf_nodes: 15
+      learning_rate: 0.05
+      min_samples_leaf: 20
+      early_stopping: false
+    standardize: false
+    max_training_samples: 100000
+defaults:
+  features: &id001
+  - roc_20
+  - roc_60
+  - volatility_20
+  - rsi_14
+  - volume_ratio
+  horizon: 5
+  train_days: 252
+  min_train_days: 60
+  retrain_days: 20
+  model: random_forest
+horizons:
+- 1
+- 5
+- 10
+- 20
+bounds:
+  train_days:
+  - 60
+  - 1000
+  min_train_days:
+  - 30
+  - 252
+  retrain_days:
+  - 1
+  - 126
+field_labels:
+  train_days: 每次使用过去多少个交易日训练
+  min_train_days: 至少需要多少个有效训练日
+  retrain_days: 每隔几个交易日重新训练
+factors:
+  ml_decision_tree:
+    kind: ml
+    category: 机器学习
+    label: 决策树预测得分
+    description: 用一棵树学习指标与以后涨跌之间的关系。只使用预测当天以前已经知道的训练结果。
+    default_sign: 1
+    requires:
+    - close
+    - high
+    - low
+    - volume
+    recipe:
+      features: *id001
+      horizon: 5
+      train_days: 252
+      min_train_days: 60
+      retrain_days: 20
+      model: decision_tree
+  ml_random_forest:
+    kind: ml
+    category: 机器学习
+    label: 随机森林预测得分
+    description: 多棵决策树分别学习，再平均预测结果。只使用预测当天以前已经知道的训练结果。
+    default_sign: 1
+    requires:
+    - close
+    - high
+    - low
+    - volume
+    recipe:
+      features: *id001
+      horizon: 5
+      train_days: 252
+      min_train_days: 60
+      retrain_days: 20
+      model: random_forest
+  ml_extra_trees:
+    kind: ml
+    category: 机器学习
+    label: 极端随机树预测得分
+    description: 用更随机的切分建立多棵树，再平均结果。只使用预测当天以前已经知道的训练结果。
+    default_sign: 1
+    requires:
+    - close
+    - high
+    - low
+    - volume
+    recipe:
+      features: *id001
+      horizon: 5
+      train_days: 252
+      min_train_days: 60
+      retrain_days: 20
+      model: extra_trees
+  ml_gradient_boosting:
+    kind: ml
+    category: 机器学习
+    label: 梯度提升树预测得分
+    description: 逐轮补充前面模型没学好的部分。只使用预测当天以前已经知道的训练结果。
+    default_sign: 1
+    requires:
+    - close
+    - high
+    - low
+    - volume
+    recipe:
+      features: *id001
+      horizon: 5
+      train_days: 252
+      min_train_days: 60
+      retrain_days: 20
+      model: gradient_boosting
+  ml_ensemble:
+    kind: ml
+    category: 机器学习
+    label: 组合模型：树、森林与提升树预测得分
+    description: 平均决策树、随机森林和梯度提升树的预测。只使用预测当天以前已经知道的训练结果。
+    default_sign: 1
+    requires:
+    - close
+    - high
+    - low
+    - volume
+    recipe:
+      features: *id001
+      horizon: 5
+      train_days: 252
+      min_train_days: 60
+      retrain_days: 20
+      model: ensemble
+  ml_ridge:
+    kind: ml
+    category: 机器学习
+    label: 岭回归预测得分
+    description: 用线性关系预测收益，并限制系数大小，适合作为简单基线。只使用预测日前已经结束的训练收益。
+    default_sign: 1
+    requires:
+    - open
+    - close
+    - high
+    - low
+    - volume
+    recipe:
+      features: *id001
+      horizon: 5
+      train_days: 252
+      min_train_days: 60
+      retrain_days: 20
+      model: ridge
+  ml_elastic_net:
+    kind: ml
+    category: 机器学习
+    label: 弹性网回归预测得分
+    description: 同时限制系数大小并让部分系数变为0，观察哪些指标更有用。只使用预测日前已经结束的训练收益。
+    default_sign: 1
+    requires:
+    - open
+    - close
+    - high
+    - low
+    - volume
+    recipe:
+      features: *id001
+      horizon: 5
+      train_days: 252
+      min_train_days: 60
+      retrain_days: 20
+      model: elastic_net
+  ml_knn:
+    kind: ml
+    category: 机器学习
+    label: 近邻回归 KNN预测得分
+    description: 寻找指标状态相近的历史样本，平均它们后来的收益。只使用预测日前已经结束的训练收益。
+    default_sign: 1
+    requires:
+    - open
+    - close
+    - high
+    - low
+    - volume
+    recipe:
+      features: *id001
+      horizon: 5
+      train_days: 252
+      min_train_days: 60
+      retrain_days: 20
+      model: knn
+  ml_svr:
+    kind: ml
+    category: 机器学习
+    label: 支持向量回归 SVR预测得分
+    description: 用核函数学习非线性关系；训练较慢，单次训练最多3000条样本。只使用预测日前已经结束的训练收益。
+    default_sign: 1
+    requires:
+    - open
+    - close
+    - high
+    - low
+    - volume
+    recipe:
+      features: *id001
+      horizon: 5
+      train_days: 252
+      min_train_days: 60
+      retrain_days: 20
+      model: svr
+  ml_hist_gradient_boosting:
+    kind: ml
+    category: 机器学习
+    label: 直方图梯度提升树预测得分
+    description: 先把数值分桶，再逐轮训练，适合比较更快的提升树。只使用预测日前已经结束的训练收益。
+    default_sign: 1
+    requires:
+    - open
+    - close
+    - high
+    - low
+    - volume
+    recipe:
+      features: *id001
+      horizon: 5
+      train_days: 252
+      min_train_days: 60
+      retrain_days: 20
+      model: hist_gradient_boosting

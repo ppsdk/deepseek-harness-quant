@@ -2,15 +2,22 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>Deepseek HARNESS Quant · 回测</title>
+<title>量化研究 · 回测</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="/v2/assets/ui_common.css">
 <link rel="stylesheet" href="/v2/assets/anim_common.css">
 <link rel="stylesheet" href="/v2/assets/app.css">
+<link rel="stylesheet" href="/v2/assets/studio.css"><link rel="stylesheet" href="/v2/assets/backtest_report.css">
 <style>
   .bt-ctl { display:flex; flex-wrap:wrap; gap:12px; margin:12px 0; align-items:end; }
   .bt-ctl label { font-size:12px; color:#a1a1aa; }
-  .bt-ctl select, .bt-ctl input { margin-left:4px; padding:6px 8px; border:1px solid #2a2a30; border-radius:8px; font-size:12px; outline:none; }
+  .bt-ctl select, .bt-ctl input { margin-left:4px; padding:7px 8px; border:1px solid #3c506e; border-radius:6px; font-size:12px; outline:none; background:#182334; color:#e0e8f7; max-width:100%; box-sizing:border-box; }
+  #bt-parameters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));align-items:stretch;gap:14px}
+  .bt-param-group{border:1px solid #303e51;border-radius:8px;min-width:0;margin:0;padding:12px;display:flex;flex-wrap:wrap;align-content:start;gap:13px}
+  .bt-param-group legend{font-size:13px;color:#c7d5eb;padding:0 6px}.bt-param-group label{display:flex;flex-direction:column;gap:6px;max-width:100%}.bt-param-group input,.bt-param-group select{margin-left:0}
+  #bt-pool-note{grid-column:1/-1;font-size:12px;color:#aab4c1;line-height:1.8;margin:0}
+  #bt-filter select,#bt-filter input{background:#182334;color:#e0e8f7;border:1px solid #3c506e}
+  #bt-archive>div{grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr))!important}
   .bt-ctl select:focus, .bt-ctl input:focus { border-color:var(--navy2); }
   .bt-kpi { display:flex; flex-wrap:wrap; gap:16px; margin:12px 0; }
   .bt-kpi .k { min-width:104px; }
@@ -23,40 +30,48 @@
   .bt-legend { display:flex; gap:16px; font-size:12px; color:#a1a1aa; margin:6px 0; }
   .bt-legend .sw { display:inline-block; width:14px; height:3px; border-radius:2px; margin-right:5px; vertical-align:2px; }
   .vtag { font-size:11px; padding:2px 8px; border-radius:6px; font-weight:600; margin-left:6px; white-space:nowrap; }
-  .vtag-yx { background:rgba(39,174,96,.12); color:#4ade80; }
-  .vtag-wx { background:rgba(235,87,87,.12); color:#eb5757; }
+  .vtag-yx  { background:rgba(34,197,94,.13);  color:#4ade80; }   /* 有效（旧）*/
+  .vtag-wx  { background:rgba(239,68,68,.12);   color:#f87171; }   /* 无效 */
+  .vtag-v5  { background:rgba(34,197,94,.15);   color:#4ade80; }   /* 优秀 */
+  .vtag-v4  { background:rgba(20,184,166,.14);  color:#2dd4bf; }   /* 良好 */
+  .vtag-v3  { background:rgba(234,179,8,.13);   color:#facc15; }   /* 观察 */
+  .vtag-v2  { background:rgba(249,115,22,.13);  color:#fb923c; }   /* 勉强 */
+  .vtag-v1  { background:rgba(239,68,68,.12);   color:#f87171; }   /* 无效 */
+  /* 周期快捷按钮 */
+  .bt-period-btns { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:6px; }
+  .bt-period-btns button { font-size:11px; padding:3px 9px; border-radius:5px; border:1px solid #3c506e; background:#182334; color:#b0c4de; cursor:pointer; transition:background .15s,color .15s; }
+  .bt-period-btns button:hover { background:#233047; color:#e0e8f7; }
+  .bt-period-btns button.active { background:rgba(45,100,180,.25); border-color:#4a7fc1; color:#91b9ff; }
   .bt-filter { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; align-items:center; }
 </style>
 </head>
 <body style="background:var(--bg);margin:0">
 <div id="sidebar"></div>
 <div class="v2-wrap">
-  <div class="v2-h"><span class="bar"></span><h1>回测</h1><span class="sub">策略回测 · 参数化运行 · 历史归档</span></div>
+  <div class="v2-h"><span class="bar"></span><h1>量化研究 · 回测</h1><span class="sub">选择策略 → 设置费用 → 运行回测 → 比较结果</span></div>
 
   <!-- 策略回测（参数 + 运行 + 结果） -->
   <div class="v2-card anim-fade-in-up d0" style="margin-top:14px">
-    <h2> 策略回测 <span class="tag">按参数即时跑 · 复用缓存秒级重跑</span></h2>
+    <h2> 策略回测 <span class="tag">T+1 开盘 · 按实际成交计费</span></h2>
     <div class="bt-ctl">
       <label>筛选
         <select id="bt-cat-filter" style="width:86px">
-          <option value="">全部</option>
-          <option value="策略">策略</option>
-          <option value="复刻">复刻</option>
-          <option value="因子">因子</option>
+          <option value="">加载中…</option>
         </select>
       </label>
       <input id="bt-search" placeholder="搜索策略…" style="width:110px;padding:6px 8px;border:1px solid #2a2a30;border-radius:8px;background:#131316;color:#d4d4d8;font-size:12px;outline:none">
       <label>策略
         <select id="bt-strategy"><option value="">加载中…</option></select>
       </label>
-      <label>TopN <input id="bt-topn" type="number" value="5" min="1" max="20" style="width:56px"></label>
-      <label>股票数 <input id="bt-stocks" type="number" value="300" min="50" max="3000" step="50" style="width:76px"></label>
-      <label>起 <input id="bt-start" value="2021-01-01" style="width:92px"></label>
-      <label>止 <input id="bt-end" value="2025-12-31" style="width:92px"></label>
-      <button class="v2-btn" id="bt-run" style="margin-left:4px">运行回测</button>
     </div>
+    <div class="bt-ctl" id="bt-parameters">加载研究参数…</div>
+    <div id="bt-indicator-settings"></div>
+    <p id="bt-position-note" class="studio-note"></p>
+    <button class="v2-btn" id="bt-run" disabled>运行回测</button>
+    <div id="bt-run-status" class="studio-note" role="status"></div>
     <div class="mini" id="bt-strategy-desc" style="color:#a1a1aa;margin-top:8px;line-height:1.8">加载策略目录…</div>
-    <div id="bt-result"><div class="mini" style="opacity:.6">选择参数后点「运行回测」（首次加载数据约 5-15s，重复跑 1-2s）</div></div>
+    <div class="mini" style="margin-top:8px">1 基点 = 0.01%。当前使用前复权价格和小数调整份额；结果用于研究。股票数上限按当前缓存选取，不代表全市场已完整下载。</div>
+    <div id="bt-result"><div class="mini">设置研究区间、换股间隔和成本后运行；可改变滑点重复实验，并在历史记录中比较。</div></div>
   </div>
 
   <!-- 历史记录 -->
@@ -72,117 +87,57 @@
 <script src="/v2/components/icons.js"></script>
 <script src="/v2/components/search.js"></script>
 <script src="/v2/components/sidebar.js"></script>
+<script src="/v2/components/studio.js"></script>
+<script src="/v2/components/indicator_editor.js"></script><script src="/v2/components/research_chart.js"></script><script src="/v2/components/backtest_report.js"></script>
 <script>
 (function () {
   LW.sidebar.render('sidebar', {active: 'backtest'});
   var R = LW.render;
 
-  /* ---------- SVG 图 ---------- */
-  function cummax(arr) { var m = -Infinity, o = []; arr.forEach(function (v) { m = Math.max(m, v); o.push(m); }); return o; }
-  function drawdown(nav) { var cm = cummax(nav); return nav.map(function (v, i) { return v / cm[i] - 1; }); }
-  function svgSeries(seriesList, opts) {
-    opts = opts || {};
-    var W = opts.w || 940, H = opts.h || 220, PL = 56, PR = 16, PT = 12, PB = 26;
-    var all = [];
-    seriesList.forEach(function (s) { all = all.concat(s.data); });
-    if (!all.length) return '<div class="mini">无数据</div>';
-    var lo = opts.lo != null ? opts.lo : Math.min.apply(null, all);
-    var hi = opts.hi != null ? opts.hi : Math.max.apply(null, all);
-    if (hi - lo < 1e-9) hi = lo + 1;
-    function px(i, n) { return PL + i * (W - PL - PR) / Math.max(n - 1, 1); }
-    function py(v) { return PT + (1 - (v - lo) / (hi - lo)) * (H - PT - PB); }
-    var grid = '';
-    for (var g = 0; g <= 4; g++) {
-      var gy = (PT + g * (H - PT - PB) / 4).toFixed(1);
-      grid += '<line x1="' + PL + '" y1="' + gy + '" x2="' + (W - PR) + '" y2="' + gy + '" stroke="#d4d4d8" stroke-width="1"/>';
-    }
-    var zero = (opts.zeroLine && lo < 0 && hi > 0) ? '<line x1="' + PL + '" y1="' + py(0).toFixed(1) + '" x2="' + (W - PR) + '" y2="' + py(0).toFixed(1) + '" stroke="#a1a1aa" stroke-width="1" stroke-dasharray="4,3"/>' : '';
-    var lines = seriesList.map(function (s) {
-      var pts = [];
-      for (var i = 0; i < s.data.length; i++) pts.push(px(i, s.data.length).toFixed(1) + ',' + py(s.data[i]).toFixed(1));
-      if (s.fill) {
-        var area = pts.join(' ') + ' ' + px(s.data.length - 1, s.data.length).toFixed(1) + ',' + py(lo).toFixed(1) +
-          ' ' + px(0, s.data.length).toFixed(1) + ',' + py(lo).toFixed(1);
-        return '<polygon points="' + area + '" fill="' + (s.fillColor || 'rgba(39,174,96,.12)') + '" stroke="' + (s.color || '#27ae60') + '" stroke-width="' + (s.width || 1.2) + '"/>';
-      }
-      return '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + (s.color || '#5e6ad2') +
-        '" stroke-width="' + (s.width || 2) + '"' + (s.dash ? ' stroke-dasharray="5,4"' : '') + '/>';
-    }).join('');
-    var lbl = '<text x="' + PL + '" y="' + (H - 8) + '" font-size="10" fill="#a1a1aa">' + (opts.x0 || '') + '</text>' +
-      '<text x="' + (W - PR) + '" y="' + (H - 8) + '" font-size="10" fill="#a1a1aa" text-anchor="end">' + (opts.x1 || '') + '</text>' +
-      '<text x="' + (W - PR) + '" y="' + (PT + 8) + '" font-size="10" fill="#a1a1aa" text-anchor="end">' + (opts.hiLabel || hi.toFixed(2)) + '</text>';
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto">' + grid + zero + lines + lbl + '</svg>';
+  function verdictClass(v) {
+    return v === '优秀' ? 'vtag-v5' : v === '良好' ? 'vtag-v4' : v === '观察' ? 'vtag-v3' : v === '勉强' ? 'vtag-v2' : 'vtag-v1';
   }
-
-  function pct(v) { return (v == null || isNaN(v)) ? '—' : (v * 100).toFixed(2) + '%'; }
-  function kpiVl(v, color) { return '<div class="k"><div class="lb">' + v.lb + '</div><div class="vl" style="color:' + color + '">' + v.v + '</div></div>'; }
-
-  function renderResult(d) {
-    var m = d.metrics || {};
-    var ann = m.annual_return || 0;
-    var annC = ann >= 0 ? '#eb5757' : '#27ae60';
-    var dd = drawdown(d.nav);
-    var kpi =
-      '<div class="bt-kpi">' +
-      kpiVl({ lb: '年化收益', v: pct(ann) }, annC) +
-      kpiVl({ lb: '超额年化', v: d.excess_annual != null ? pct(d.excess_annual) : '—' }, (d.excess_annual >= 0 ? '#eb5757' : '#27ae60')) +
-      kpiVl({ lb: '最大回撤', v: pct(m.max_drawdown) }, '#27ae60') +
-      kpiVl({ lb: '夏普', v: m.sharpe != null ? m.sharpe.toFixed(2) : '—' }, '#f4f4f5') +
-      kpiVl({ lb: '索提诺', v: m.sortino != null ? m.sortino.toFixed(2) : '—' }, '#f4f4f5') +
-      kpiVl({ lb: '卡玛', v: m.calmar != null ? m.calmar.toFixed(2) : '—' }, '#f4f4f5') +
-      kpiVl({ lb: '期末净值', v: m.final_nav != null ? m.final_nav.toFixed(2) : '—' }, '#f4f4f5') +
-      kpiVl({ lb: '月胜率', v: pct(m.monthly_win_rate) }, '#f4f4f5') +
-      kpiVl({ lb: '耗时', v: d.elapsed_s + 's' }, '#a1a1aa') +
-      '</div>';
-    var legend = '<div class="bt-legend"><span><span class="sw" style="background:#5e6ad2"></span>策略净值</span>' +
-      '<span><span class="sw" style="background:#f2c94c"></span>全池等权基准</span>' +
-      '<span><span class="sw" style="background:#27ae60"></span>超额净值（策略/基准）</span>' +
-      '<span style="margin-left:auto">' + d.params.stocks + ' 只 · ' + d.params.start + '~' + d.params.end + '</span></div>';
-    var navSeries = [{ data: d.nav, color: '#5e6ad2', width: 2 }];
-    if (d.bench_nav && d.bench_nav.length) navSeries.push({ data: d.bench_nav, color: '#f2c94c', width: 1.4, dash: true });
-    if (d.excess_nav && d.excess_nav.length) navSeries.push({ data: d.excess_nav, color: '#27ae60', width: 1.2, dash: true });
-    var navChart = svgSeries(navSeries, { x0: d.dates[0], x1: d.dates[d.dates.length - 1] });
-    var ddVals = dd.map(function (v) { return v * 100; });
-    var ddChart = svgSeries([{ data: ddVals, color: '#27ae60', width: 1.2, fill: true }], {
-      x0: d.dates[0], x1: d.dates[d.dates.length - 1], hiLabel: '回撤 ' + Math.min.apply(null, ddVals).toFixed(1) + '%'
-    });
-    var stat = '<table class="bt-stat"><tbody>' +
-      '<tr><td>累计收益</td><td style="color:' + annC + '">' + pct(m.total_return) + '</td></tr>' +
-      '<tr><td>年化收益</td><td style="color:' + annC + '">' + pct(ann) + '</td></tr>' +
-      '<tr><td>最大回撤</td><td style="color:#27ae60">' + pct(m.max_drawdown) + '</td></tr>' +
-      '<tr><td>年化波动率</td><td>' + pct(m.volatility) + '</td></tr>' +
-      '<tr><td>夏普 / 索提诺 / 卡玛</td><td>' + m.sharpe.toFixed(2) + ' / ' + m.sortino.toFixed(2) + ' / ' + m.calmar.toFixed(2) + '</td></tr>' +
-      '<tr><td>日胜率 / 月胜率</td><td>' + pct(m.win_rate) + ' / ' + pct(m.monthly_win_rate) + '</td></tr>' +
-      '<tr><td>最佳日 / 最差日</td><td>' + pct(m.best_day) + ' / ' + pct(m.worst_day) + '</td></tr>' +
-      '<tr><td>期末净值 / 样本</td><td>' + m.final_nav.toFixed(2) + ' / ' + m.n_days + ' 日</td></tr>' +
-      '</tbody></table>';
-    document.getElementById('bt-result').innerHTML =
-      kpi + legend +
-      '<div style="display:grid;grid-template-columns:1fr 220px;gap:14px;align-items:start">' +
-        '<div>' + navChart + '<div class="mini" style="margin-top:4px;color:#a1a1aa">净值曲线（策略 vs 基准）</div>' +
-        '<div style="margin-top:10px">' + ddChart + '<div class="mini" style="margin-top:4px;color:#a1a1aa">回撤 %（水下面积）</div></div>' +
-        '<div>' + stat + '</div>' +
-      '</div>' +
-      '<div class="mini" style="opacity:.6;margin-top:8px">含成本（佣金万2.6+印花税0.05%+滑点0.1%）；回测非实盘，仅供研究</div>';
-  }
+  function renderResult(d) { LW.backtestReport.render(document.getElementById('bt-result'), d); }
 
   /* ★2026-08-16 策略目录：动态加载（/api/live/backtest_strategies）+ 分类筛选 + 搜索 + 记忆 + 描述 */
   var STRATS = {};
+  var PARAMS = {};
+  var POOLS = [];
+  var BTCONFIG,btIndicatorEditor,lastAppliedStrategy='';
+  function applyPool() {
+    var select=document.getElementById('bt-pool_id'), pool=POOLS.find(function(p){return select&&p.id===select.value;});
+    var codes=document.getElementById('bt-codes'),hint=document.getElementById('bt-pool-note');
+    if(codes)codes.readOnly=!!pool;
+    if(!pool){if(hint)hint.textContent='未选择保存的股票池，使用填写的股票代码；留空则按缓存范围选股。';return;}
+    codes.value=pool.codes.join(',');document.getElementById('bt-stocks').value=pool.count;
+    var top=document.getElementById('bt-topn');top.value=Math.min(Number(top.value)||pool.count,pool.count);
+    var start=document.getElementById('bt-start'),end=document.getElementById('bt-end');
+    if(pool.signal_date&&start.value<=pool.signal_date){var d=new Date(pool.signal_date+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);start.value=d.toISOString().slice(0,10);}
+    if(end.value<start.value)end.value=start.value;
+    if(hint)hint.textContent='本次只使用“'+pool.name+'”的'+pool.count+'只股票。'+(pool.signal_date?'选股日 '+pool.signal_date+'，回测必须从这一天之后开始。想做更早的历史检验，请先按当时日期重新选股。':'这是手动保存的固定名单，请自行核对名单当时是否已知。');
+  }
+  var defaultStrategy = '';
+  var incoming = new URLSearchParams(window.location.search);
   function applyStrategyMeta() {
     var id = document.getElementById('bt-strategy').value;
     var s = STRATS[id] || {};
     var d = s.defaults || {};
-    if (d.topn != null) document.getElementById('bt-topn').value = d.topn;
-    if (d.stocks != null) document.getElementById('bt-stocks').value = d.stocks;
+    if(id!==lastAppliedStrategy)(BTCONFIG.strategy_default_keys||Object.keys(d)).forEach(function (key) {
+      var input = document.getElementById('bt-' + key);
+      if (input) input.value = d[key]==null?PARAMS[key].default:d[key];
+    });
+    if(btIndicatorEditor&&id!==lastAppliedStrategy)btIndicatorEditor.setFactors(s.factors||[],d.indicator_params||{});
+    lastAppliedStrategy=id;
+    applyPool();
     var runBtn = document.getElementById('bt-run');
     var desc = document.getElementById('bt-strategy-desc');
     if (desc) {
       desc.innerHTML =
         '<b style="color:var(--navy2)">' + R._f(s.name || id) + '</b> · <span style="color:' + catColor(s.category) + '">' + R._f(s.category || '') + '</span>' +
         (s.instant === false ? ' · <b style="color:var(--gold)">批处理（约 1-3 分钟，结果入归档）</b>' : '') +
-        ' <span style="color:var(--muted)">· ' + R._f(s.desc || '') + '</span>';
+        ' <span style="color:var(--muted)">· ' + R._f((s.desc || '')+' '+(s.data_note || '')) + '</span>';
     }
-    if (runBtn) runBtn.disabled = s.instant === false;
+    if (runBtn) runBtn.disabled = !id || s.instant === false;
   }
   function renderStrategyOptions() {
     var cat = document.getElementById('bt-cat-filter').value;
@@ -195,26 +150,97 @@
       if (kw && (s.name + ' ' + (s.desc || '') + ' ' + (s.factors || []).join(' ')).toLowerCase().indexOf(kw.toLowerCase()) < 0) return false;
       return true;
     });
-    var sel = document.getElementById('bt-strategy');
+    var sel = document.getElementById('bt-strategy'),previous=sel.value;
     sel.innerHTML = ids.map(function (id) {
       var s = STRATS[id];
       return '<option value="' + id + '">' + R._f(s.name) + '（' + R._f(s.category) + '）</option>';
     }).join('') || '<option value="">无匹配策略</option>';
-    var target = ids.indexOf(saved) >= 0 ? saved : ids[0];
+    var requested = incoming.get('strategy');
+    var target = ids.indexOf(previous)>=0?previous:ids.indexOf(requested) >= 0 ? requested : ids.indexOf(saved) >= 0 ? saved : ids.indexOf(defaultStrategy) >= 0 ? defaultStrategy : ids[0];
     if (target) sel.value = target;
     applyStrategyMeta();
   }
   function loadStrategies() {
-    return LW.api.get('/api/live/backtest_strategies').then(function (d) {
+    return LW.api.get('/api/research/config').then(function (d) {
       STRATS = (d && d.strategies) || {};
+      BTCONFIG=d;
+      btIndicatorEditor=LW.indicatorEditor.mount('bt-indicator-settings',d,[],{});
+      document.getElementById('bt-position-note').textContent=d.position_note;
+      defaultStrategy = d.default_strategy || '';
+      var catFilter = document.getElementById('bt-cat-filter');
+      catFilter.textContent = '';
+      [''].concat(Array.from(new Set(Object.keys(STRATS).map(function (id) { return STRATS[id].category; })))).forEach(function (cat) {
+        var option = document.createElement('option'); option.value = cat; option.textContent = cat || '全部'; catFilter.appendChild(option);
+      });
+      PARAMS = d.parameters || {};
+      POOLS = d.stock_pools || [];
+      var form = document.getElementById('bt-parameters'); form.textContent = '';
+      var fieldHosts = {};
+      (d.parameter_groups || []).forEach(function(group){
+        var section=document.createElement('fieldset'),legend=document.createElement('legend');
+        section.className='bt-param-group';legend.textContent=group.label;section.appendChild(legend);form.appendChild(section);
+        (group.fields||[]).forEach(function(key){fieldHosts[key]=section;});
+      });
+      Object.keys(PARAMS).forEach(function (key) {
+        if(PARAMS[key].hidden)return;
+        var field = PARAMS[key], label = document.createElement('label'), input = document.createElement(field.type==='select'?'select':'input');
+        label.textContent = field.label; input.id = 'bt-' + key; if(field.type==='select'){Object.keys(field.options).forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=field.options[v];input.appendChild(o);});}else input.type = field.type;
+        input.value = field.default == null ? '' : field.default;
+        ['min', 'max', 'step'].forEach(function (prop) { if (field[prop] != null) input[prop] = field[prop]; });
+        input.style.width = field.type === 'select' ? '260px' : field.type === 'text' ? '230px' : field.type === 'date' ? '140px' : '100px';
+        label.appendChild(input); (fieldHosts[key] || form).appendChild(label);
+      });
       renderStrategyOptions();
-    }).catch(function () {
-      // 兜底：目录接口不可用时不阻塞（仅内置两个）
-      STRATS = {
-        tech3: { name: '技术三因子', category: '策略', instant: true, desc: 'rps_120 反转 + lowvol_60 反转 + near_high_250 正向（月频）', factors: ['rps_120', 'lowvol_60', 'near_high_250'], defaults: { topn: 5, stocks: 300 } },
-        script1: { name: '大市值三因子', category: '复刻', instant: true, desc: '营收增长率 + 市值 + Beta（月频）', factors: ['营收增长率', '市值', 'Beta'], defaults: { topn: 5, stocks: 300 } }
-      };
-      renderStrategyOptions();
+      // ── 周期快捷按钮（填充 bt-start / bt-end）────────────────────────────
+      (function(){
+        var startEl = document.getElementById('bt-start'), endEl = document.getElementById('bt-end');
+        if (!startEl || !endEl) return;
+        var wrap = document.createElement('div');
+        wrap.className = 'bt-period-btns';
+        wrap.setAttribute('aria-label', '快速设置回测区间');
+        var periods = [
+          {label:'1M', months:1}, {label:'3M', months:3}, {label:'6M', months:6},
+          {label:'1Y', months:12}, {label:'3Y', months:36}, {label:'5Y', months:60},
+          {label:'ALL', months:0}
+        ];
+        var activeBtn = null;
+        periods.forEach(function(p) {
+          var btn = document.createElement('button');
+          btn.type = 'button'; btn.textContent = p.label;
+          btn.title = p.months ? '最近' + p.label : '全部可用数据';
+          btn.onclick = function() {
+            var end = new Date(); end.setHours(0,0,0,0);
+            endEl.value = end.toISOString().slice(0,10);
+            if (p.months) {
+              var start = new Date(end); start.setMonth(start.getMonth() - p.months);
+              startEl.value = start.toISOString().slice(0,10);
+            } else {
+              startEl.value = PARAMS.start ? PARAMS.start.default : '2015-01-01';
+            }
+            if (activeBtn) activeBtn.classList.remove('active');
+            btn.classList.add('active'); activeBtn = btn;
+            applyPool();
+          };
+          wrap.appendChild(btn);
+        });
+        startEl.parentNode.insertAdjacentElement('beforebegin', wrap);
+        // 手动改日期时取消高亮
+        [startEl, endEl].forEach(function(el) {
+          el.addEventListener('change', function() {
+            if (activeBtn) { activeBtn.classList.remove('active'); activeBtn = null; }
+          });
+        });
+      })();
+      Object.keys(PARAMS).forEach(function (key) {
+        if(PARAMS[key].hidden)return;
+        if (incoming.has(key)) document.getElementById('bt-' + key).value = incoming.get(key);
+      });
+      if(incoming.has('indicator_params')){try{btIndicatorEditor.setFactors((STRATS[document.getElementById('bt-strategy').value]||{}).factors||[],JSON.parse(incoming.get('indicator_params')));}catch(e){document.getElementById('bt-run-status').textContent='传入的指标参数无法读取，请重新设置。';}}
+      var hint=document.createElement('p');hint.id='bt-pool-note';hint.className='studio-note';form.appendChild(hint);
+      document.getElementById('bt-pool_id').onchange=applyPool;var planSelect=document.getElementById('bt-signal_plan_id');function applyPlan(){var plan=(BTCONFIG.signal_plans||[]).find(function(p){return p.id===planSelect.value;});if(plan)document.getElementById('bt-pool_id').value=plan.pool_id;applyPool();if(plan)hint.textContent+=' 仅在入场条件满足时新建仓，持仓等待退出条件或风险退出；普通换股日不强制卖出。';}planSelect.onchange=applyPlan;applyPlan();
+    }).catch(function (e) {
+      document.getElementById('bt-parameters').textContent = '研究配置读取失败：' + e;
+      document.getElementById('bt-run').disabled = true;
     });
   }
   document.getElementById('bt-cat-filter').addEventListener('change', renderStrategyOptions);
@@ -223,20 +249,24 @@
     try { localStorage.setItem('bt.strategy', this.value); } catch (e) {}
     applyStrategyMeta();
   });
-  loadStrategies();
+  loadStrategies().then(function(){var resumed=LW.studio.resume('bt-run-status',renderResult);if(resumed){document.getElementById('bt-run').disabled=true;resumed.catch(function(){}).finally(function(){document.getElementById('bt-run').disabled=false;});}});
 
   document.getElementById('bt-run').onclick = function () {
-    var q = 'strategy=' + encodeURIComponent(document.getElementById('bt-strategy').value) +
-      '&topn=' + document.getElementById('bt-topn').value +
-      '&stocks=' + document.getElementById('bt-stocks').value +
-      '&start=' + encodeURIComponent(document.getElementById('bt-start').value) +
-      '&end=' + encodeURIComponent(document.getElementById('bt-end').value);
-    document.getElementById('bt-result').innerHTML = '<div class="mini" style="opacity:.7;padding:16px 0">回测运行中…（首次加载数据约 5-15s，勿重复点击）</div>';
-    LW.api.get('/api/live/backtest_run?' + q, { timeout: 180000 }).then(function (d) {
-      if (!d.ok) { document.getElementById('bt-result').innerHTML = '<div class="mini" style="color:var(--red)">失败：' + (d.error || '未知') + '</div>'; return; }
+    var values = {strategy: document.getElementById('bt-strategy').value};
+    Object.keys(PARAMS).forEach(function (key) {
+      if(PARAMS[key].hidden)return;
+      values[key] = document.getElementById('bt-' + key).value;
+    });
+    values.indicator_params=btIndicatorEditor.get();
+    var btn = document.getElementById('bt-run'); btn.disabled = true;
+    document.getElementById('bt-result').textContent = '回测运行中，请勿重复点击…';
+    LW.studio.job('backtest',values,'bt-run-status').then(function (d) {
+      if (!d.ok) throw new Error(d.error || '回测失败');
       renderResult(d);
+      LW.api.clear();
       loadArchive();   // 运行后刷新历史记录
-    }).catch(function (e) { document.getElementById('bt-result').innerHTML = '<div class="mini" style="color:var(--red)">失败：' + e + '</div>'; });
+    }).catch(function (e) { document.getElementById('bt-result').textContent = '失败：' + e.message; })
+    .finally(function () { btn.disabled = false; });
   };
 
   /* ---------- 历史记录（只看最新 + 类型 + 有效/无效 + 关键词） ---------- */
@@ -252,12 +282,16 @@
     var btn = a.has_html
       ? '<a class="v2-btn" href="/dl/backtest_archive/' + encodeURIComponent(fname(a.html)) + '" target="_blank">打开报告</a>'
       : '<a class="v2-btn" style="background:#16161a;color:var(--navy)" href="/dl/backtest_archive/' + encodeURIComponent(fname(a.json)) + '" target="_blank">查看JSON</a>';
+    var archiveId = fname(a.json).replace(/\.json$/, '');
+    if (/^research_[a-z0-9_]+_[0-9a-f]{32}$/.test(archiveId)) {
+      btn = '<a class="v2-btn" href="/backtests?run=' + encodeURIComponent(archiveId) + '">查看可视化报告</a>';
+    }
     var latestBadge = a.is_latest ? '<span class="vtag" style="background:rgba(94,106,210,.14);color:#8b5cf6">最新</span>' : '';
     return '<div class="v2-card" style="margin-top:0;padding:14px 16px">' +
       '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap">' +
         '<span><b>' + R._f(a.title || a.name || '回测') + '</b>' + latestBadge +
           '<span class="vtag" style="background:' + catColor(a.category) + '1a;color:' + catColor(a.category) + '">' + a.category + '</span>' +
-          '<span class="vtag ' + (a.verdict === '有效' ? 'vtag-yx' : 'vtag-wx') + '">' + a.verdict + '</span>' +
+          '<span class="vtag ' + verdictClass(a.verdict) + '">' + a.verdict + '</span>' +
         '</span>' +
         '<span class="mini" style="opacity:.6">' + R._f(a.generated_at || '') + '</span></div>' +
       '<div class="mini" style="margin:6px 0 4px;color:#a1a1aa">' + facs + '</div>' +
@@ -284,7 +318,7 @@
       history = (d && d.history) || [];
       var all = latest.concat(history);
       var cats = ['全部'].concat(Array.from(new Set(all.map(function (a) { return a.category; }))));
-      var verds = ['全部', '有效', '无效'];
+      var verds = ['全部'].concat(Array.from(new Set(all.map(function (a) { return a.verdict; }))));
       document.getElementById('bt-count').textContent = '最新 ' + latest.length + ' · 历史 ' + history.length;
       document.getElementById('bt-filter').innerHTML =
         '<label class="mini" style="display:flex;align-items:center;gap:4px;cursor:pointer">' +
@@ -305,6 +339,5 @@
 })();
 </script>
 
-<div class="mini" style="text-align:center;margin-top:18px;opacity:.7"><span class="dsq-brand">Deepseek HARNESS Quant</span><span style="color:var(--muted)"> · 作者：LW </span><span style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:#2a2a30;border:1px solid #3a3a44;box-shadow:0 2px 6px rgba(0,0,0,.5)"><svg class="cat-stroll" width="22" height="22" viewBox="0 0 24 24" fill="none"><path class="cat-tail" d="M14.5 17.5c3.2.6 5.2-1.2 5.6-3.8" stroke="#111" stroke-width="2.4" stroke-linecap="round" fill="none"/><path d="M7.4 6.8L6 2.8l3.6 2.6M16.6 6.8L18 2.8l-3.6 2.6" fill="#111" stroke="#111" stroke-width="1"/><circle cx="10.5" cy="9.5" r="4.4" fill="#111"/><ellipse cx="11" cy="16" rx="6" ry="4.4" fill="#111"/><circle cx="8.8" cy="9.2" r="0.9" fill="#4ade80"/><circle cx="12.2" cy="9.2" r="0.9" fill="#4ade80"/><path d="M5.8 10.2h-2.6M6.4 11.6L4 12.8M18.2 10.2h-2.6M17.6 11.6l2.4 1.2" stroke="#555" stroke-width="0.7" stroke-linecap="round"/></svg></span><span style="opacity:.5"> · 低频主观量化 · 宁缺毋滥</span></div>
 </body>
 </html>

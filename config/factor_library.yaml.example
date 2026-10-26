@@ -1,0 +1,994 @@
+factors:
+  ema_20:
+    label: 20 日指数均线 EMA
+    description: 越近的价格权重越高；以首个收盘值初始化，满20根K线后显示。
+    category: 常用技术指标
+    kind: technical
+    operation: ema
+    params:
+      n: 20
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  boll_upper_20:
+    label: 20 日布林带上轨
+    description: 20期收盘均线加2倍总体标准差；均线可作为中轨一起显示。
+    category: 常用技术指标
+    kind: technical
+    operation: boll_upper
+    params:
+      n: 20
+      k: 2
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  boll_lower_20:
+    label: 20 日布林带下轨
+    description: 20期收盘均线减2倍总体标准差；不代表触及下轨一定反弹。
+    category: 常用技术指标
+    kind: technical
+    operation: boll_lower
+    params:
+      n: 20
+      k: 2
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  ma_5:
+    label: 5 日均线
+    description: 最近 5 个交易日收盘价的平均值；适合叠加在行情图上。
+    category: 常用技术指标
+    kind: technical
+    operation: sma
+    params:
+      n: 5
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  bias_5:
+    label: 离 5 日均线多远（%）
+    description: 正数表示价格高于 5 日均线，负数表示低于均线。
+    category: 常用技术指标
+    kind: technical
+    operation: ma_bias
+    params:
+      n: 5
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  ma_10:
+    label: 10 日均线
+    description: 最近 10 个交易日收盘价的平均值；适合叠加在行情图上。
+    category: 常用技术指标
+    kind: technical
+    operation: sma
+    params:
+      n: 10
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  bias_10:
+    label: 离 10 日均线多远（%）
+    description: 正数表示价格高于 10 日均线，负数表示低于均线。
+    category: 常用技术指标
+    kind: technical
+    operation: ma_bias
+    params:
+      n: 10
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  ma_20:
+    label: 20 日均线
+    description: 最近 20 个交易日收盘价的平均值；适合叠加在行情图上。
+    category: 常用技术指标
+    kind: technical
+    operation: sma
+    params:
+      n: 20
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  bias_20:
+    label: 离 20 日均线多远（%）
+    description: 正数表示价格高于 20 日均线，负数表示低于均线。
+    category: 常用技术指标
+    kind: technical
+    operation: ma_bias
+    params:
+      n: 20
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  ma_60:
+    label: 60 日均线
+    description: 最近 60 个交易日收盘价的平均值；适合叠加在行情图上。
+    category: 常用技术指标
+    kind: technical
+    operation: sma
+    params:
+      n: 60
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  bias_60:
+    label: 离 60 日均线多远（%）
+    description: 正数表示价格高于 60 日均线，负数表示低于均线。
+    category: 常用技术指标
+    kind: technical
+    operation: ma_bias
+    params:
+      n: 60
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  ma_trend:
+    label: 20 日均线相对 60 日均线（%）
+    description: 大于 0 表示短期均线高于长期均线。
+    category: 常用技术指标
+    kind: technical
+    operation: ma_ratio
+    params:
+      fast: 20
+      slow: 60
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  ma_cross:
+    label: 5 日均线上穿 20 日均线
+    description: 当天刚上穿为 1，其余为 0；设下限 1 才是只选当天金叉。
+    category: 常用技术指标
+    kind: technical
+    operation: ma_cross
+    params:
+      fast: 5
+      slow: 20
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  macd_dif:
+    label: MACD 快慢均线差 DIF
+    description: 观察上涨或下跌力量的变化；金叉表示 DIF 当天从下向上穿过 DEA。
+    category: 常用技术指标
+    kind: technical
+    operation: macd_dif
+    params:
+      fast: 12
+      slow: 26
+      signal: 9
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  macd_dea:
+    label: MACD DIF 的平滑线 DEA
+    description: 观察上涨或下跌力量的变化；金叉表示 DIF 当天从下向上穿过 DEA。
+    category: 常用技术指标
+    kind: technical
+    operation: macd_dea
+    params:
+      fast: 12
+      slow: 26
+      signal: 9
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  macd_hist:
+    label: MACD 红绿柱（2×(DIF-DEA)）
+    description: 观察上涨或下跌力量的变化；金叉表示 DIF 当天从下向上穿过 DEA。
+    category: 常用技术指标
+    kind: technical
+    operation: macd_hist
+    params:
+      fast: 12
+      slow: 26
+      signal: 9
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  macd_cross:
+    label: MACD 当天金叉
+    description: 观察上涨或下跌力量的变化；金叉表示 DIF 当天从下向上穿过 DEA。
+    category: 常用技术指标
+    kind: technical
+    operation: macd_cross
+    params:
+      fast: 12
+      slow: 26
+      signal: 9
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  rsi_14:
+    label: RSI 14：涨跌力量（0—100）
+    description: 较低表示近期跌得多，较高表示近期涨得多；低于 30 不等于一定反弹。
+    category: 常用技术指标
+    kind: technical
+    operation: rsi
+    params:
+      n: 14
+    requires:
+    - close
+    default_sign: -1
+    chart: true
+  kdj_k:
+    label: KDJ K 线
+    description: 观察收盘价在近期高低价之间的位置；J 线可以超出 0—100。
+    category: 常用技术指标
+    kind: technical
+    operation: kdj_k
+    params:
+      n: 9
+      smooth: 3
+    requires:
+    - close
+    - high
+    - low
+    default_sign: -1
+    chart: true
+  kdj_d:
+    label: KDJ D 线
+    description: 观察收盘价在近期高低价之间的位置；J 线可以超出 0—100。
+    category: 常用技术指标
+    kind: technical
+    operation: kdj_d
+    params:
+      n: 9
+      smooth: 3
+    requires:
+    - close
+    - high
+    - low
+    default_sign: -1
+    chart: true
+  kdj_j:
+    label: KDJ J 线
+    description: 观察收盘价在近期高低价之间的位置；J 线可以超出 0—100。
+    category: 常用技术指标
+    kind: technical
+    operation: kdj_j
+    params:
+      n: 9
+      smooth: 3
+    requires:
+    - close
+    - high
+    - low
+    default_sign: -1
+    chart: true
+  boll_position:
+    label: 布林带位置（%）
+    description: 0 表示下轨，50 表示中轨，100 表示上轨；可以超出范围。
+    category: 常用技术指标
+    kind: technical
+    operation: boll_position
+    params:
+      n: 20
+      k: 2
+    requires:
+    - close
+    default_sign: -1
+    chart: true
+  boll_width:
+    label: 布林带宽度（%）
+    description: 宽度越小，近期价格波动越集中。
+    category: 常用技术指标
+    kind: technical
+    operation: boll_width
+    params:
+      n: 20
+      k: 2
+    requires:
+    - close
+    default_sign: -1
+    chart: false
+  atr_14:
+    label: ATR 14：每日波幅占股价（%）
+    description: 用真实高低价及前日收盘价衡量每日波幅；数值小表示价格较平稳。
+    category: 常用技术指标
+    kind: technical
+    operation: atr_pct
+    params:
+      n: 14
+    requires:
+    - close
+    - high
+    - low
+    default_sign: -1
+    chart: true
+  adx_14:
+    label: ADX 14：趋势强弱
+    description: 数值大表示趋势较明显；需要结合均线判断是上涨还是下跌。
+    category: 常用技术指标
+    kind: technical
+    operation: adx
+    params:
+      n: 14
+    requires:
+    - close
+    - high
+    - low
+    default_sign: 1
+    chart: true
+  cci_20:
+    label: CCI 20：偏离近期均价的程度
+    description: 比较价格与近期典型价格的差距；常观察 -100 和 100 附近。
+    category: 常用技术指标
+    kind: technical
+    operation: cci
+    params:
+      n: 20
+      scale: 0.015
+    requires:
+    - close
+    - high
+    - low
+    default_sign: -1
+    chart: true
+  wr_14:
+    label: 威廉指标 WR 14（-100—0）
+    description: 接近 -100 表示价格接近近期低点，接近 0 表示接近高点。
+    category: 常用技术指标
+    kind: technical
+    operation: wr
+    params:
+      n: 14
+    requires:
+    - close
+    - high
+    - low
+    default_sign: -1
+    chart: true
+  volume_ratio:
+    label: 5 日均量 / 20 日均量
+    description: 大于 1 表示最近几天的成交量比近一个月更活跃。
+    category: 常用技术指标
+    kind: technical
+    operation: volume_ratio
+    params:
+      fast: 5
+      slow: 20
+    requires:
+    - close
+    - volume
+    default_sign: 1
+    chart: true
+  roc_12:
+    label: 12 日涨跌幅（%）
+    description: 今天收盘价与 12 个交易日前相比的涨跌幅。
+    category: 常用技术指标
+    kind: technical
+    operation: roc
+    params:
+      n: 12
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  roc_20:
+    label: 20 日涨跌幅（%）
+    description: 今天收盘价与 20 个交易日前相比的涨跌幅。
+    category: 常用技术指标
+    kind: technical
+    operation: roc
+    params:
+      n: 20
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  roc_60:
+    label: 60 日涨跌幅（%）
+    description: 今天收盘价与 60 个交易日前相比的涨跌幅。
+    category: 常用技术指标
+    kind: technical
+    operation: roc
+    params:
+      n: 60
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  breakout_20:
+    label: 超过此前 20 日最高价多少（%）
+    description: 大于 0 表示今天收盘价突破了此前 20 天的最高价，不把今天计入旧高点。
+    category: 常用技术指标
+    kind: technical
+    operation: breakout
+    params:
+      n: 20
+    requires:
+    - close
+    - high
+    - low
+    default_sign: 1
+    chart: false
+  mfi_14:
+    label: MFI 14：价格与成交量强弱
+    description: 把价格涨跌与成交量结合；值低表示近期卖出压力较大。
+    category: 常用技术指标
+    kind: technical
+    operation: mfi
+    params:
+      n: 14
+    requires:
+    - close
+    - high
+    - low
+    - volume
+    default_sign: -1
+    chart: true
+  cmf_20:
+    label: CMF 20：成交偏向收高还是收低
+    description: 正数表示较多成交发生在当日价格区间的上半部，负数相反。
+    category: 常用技术指标
+    kind: technical
+    operation: cmf
+    params:
+      n: 20
+    requires:
+    - close
+    - high
+    - low
+    - volume
+    default_sign: 1
+    chart: true
+  obv_20:
+    label: 20 日上涨成交量减下跌成交量
+    description: 用上涨日和下跌日成交量之差，除以总成交量，观察量价配合。
+    category: 常用技术指标
+    kind: technical
+    operation: obv_flow
+    params:
+      n: 20
+    requires:
+    - close
+    - high
+    - low
+    - volume
+    default_sign: 1
+    chart: true
+  volatility_20:
+    label: 20 日每日涨跌波动（%）
+    description: 每日收益率的标准差，越小表示近一个月波动越低。
+    category: 常用技术指标
+    kind: technical
+    operation: volatility
+    params:
+      n: 20
+    requires:
+    - close
+    default_sign: -1
+    chart: true
+  fund_roe:
+    label: 净资产收益率 ROE（%）
+    description: 衡量公司使用股东资金盈利的能力。
+    category: 基本面选股
+    kind: fundamental
+    metric: roe
+    requires:
+    - fund:roe
+    default_sign: 1
+  fund_revenue_growth:
+    label: 营业收入同比增长（%）
+    description: 与上一年同期相比，收入增长多少。
+    category: 基本面选股
+    kind: fundamental
+    metric: revenue_growth
+    requires:
+    - fund:revenue_growth
+    default_sign: 1
+  fund_profit_growth:
+    label: 净利润同比增长（%）
+    description: 与上一年同期相比，利润增长多少；上年亏损时需谨慎解释。
+    category: 基本面选股
+    kind: fundamental
+    metric: profit_growth
+    requires:
+    - fund:profit_growth
+    default_sign: 1
+  fund_gross_margin:
+    label: 销售毛利率（%）
+    description: 收入扣除直接营业成本后的比例。
+    category: 基本面选股
+    kind: fundamental
+    metric: gross_margin
+    requires:
+    - fund:gross_margin
+    default_sign: 1
+  fund_eps:
+    label: 每股收益（元）
+    description: 报告期累计每股收益，不自动当成年化收益。
+    category: 基本面选股
+    kind: fundamental
+    metric: eps
+    requires:
+    - fund:eps
+    default_sign: 1
+  fund_book_value:
+    label: 每股净资产（元）
+    description: 每股对应的账面净资产。
+    category: 基本面选股
+    kind: fundamental
+    metric: book_value
+    requires:
+    - fund:book_value
+    default_sign: 1
+  fund_cashflow_ps:
+    label: 每股经营现金流（元）
+    description: 经营活动产生的累计现金流，不等于每股利润。
+    category: 基本面选股
+    kind: fundamental
+    metric: cashflow_ps
+    requires:
+    - fund:cashflow_ps
+    default_sign: 1
+  fund_pe_ttm:
+    label: 市盈率 PE（过去一年）
+    description: 股价相对过去一年每股收益；只选择大于 0 的值再比较低估值。
+    category: 基本面选股
+    kind: fundamental
+    metric: pe_ttm
+    requires:
+    - fund:pe_ttm
+    default_sign: -1
+  fund_pb:
+    label: 市净率 PB
+    description: 股价相对每股净资产；只选择大于 0 的值再比较低估值。
+    category: 基本面选股
+    kind: fundamental
+    metric: pb
+    requires:
+    - fund:pb
+    default_sign: -1
+  fund_dividend_yield:
+    label: 过去一年股息率（%）
+    description: 需要含历史可用日期的股息率记录；不使用未来分红。
+    category: 基本面选股
+    kind: fundamental
+    metric: dividend_yield
+    requires:
+    - fund:dividend_yield
+    default_sign: 1
+  fund_debt_ratio:
+    label: 资产负债率（%）
+    description: 负债占资产的比例；金融与非金融企业不可直接混比。
+    category: 基本面选股
+    kind: fundamental
+    metric: debt_ratio
+    requires:
+    - fund:debt_ratio
+    default_sign: -1
+  fund_cap:
+    label: 总市值（元）
+    description: 需要当日真实总市值；不能用今天市值回填历史。
+    category: 基本面选股
+    kind: fundamental
+    metric: cap
+    requires:
+    - fund:cap
+    default_sign: -1
+  ema_10:
+    label: 10 日指数均线 EMA
+    description: 近端价格权重更高，满10期后显示。
+    category: 常用技术指标
+    kind: technical
+    operation: ema
+    params:
+      n: 10
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  ema_60:
+    label: 60 日指数均线 EMA
+    description: 用较慢的指数均线观察趋势，满60期后显示。
+    category: 常用技术指标
+    kind: technical
+    operation: ema
+    params:
+      n: 60
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  donchian_upper_20:
+    label: 此前20期最高价通道
+    description: 只用此前20根K线的最高价，排除当天。
+    category: 常用技术指标
+    kind: technical
+    operation: donchian_upper
+    params:
+      n: 20
+    requires:
+    - high
+    - close
+    default_sign: 1
+    chart: true
+  donchian_lower_20:
+    label: 此前20期最低价通道
+    description: 只用此前20根K线的最低价，排除当天。
+    category: 常用技术指标
+    kind: technical
+    operation: donchian_lower
+    params:
+      n: 20
+    requires:
+    - low
+    - close
+    default_sign: 1
+    chart: true
+  atr_abs_14:
+    label: ATR 14：平均价格波幅
+    description: Wilder平均真实波幅，单位为价格，不是百分比。
+    category: 常用技术指标
+    kind: technical
+    operation: atr
+    params:
+      n: 14
+    requires:
+    - high
+    - low
+    - close
+    default_sign: 1
+    chart: true
+  dmi_plus_14:
+    label: DMI +DI 14：上涨方向强度
+    description: 上涨方向移动相对真实波幅的比例，使用Wilder平滑。
+    category: 常用技术指标
+    kind: technical
+    operation: dmi_plus
+    params:
+      n: 14
+    requires:
+    - high
+    - low
+    - close
+    default_sign: 1
+    chart: true
+  dmi_minus_14:
+    label: DMI -DI 14：下跌方向强度
+    description: 下跌方向移动相对真实波幅的比例，使用Wilder平滑。
+    category: 常用技术指标
+    kind: technical
+    operation: dmi_minus
+    params:
+      n: 14
+    requires:
+    - high
+    - low
+    - close
+    default_sign: 1
+    chart: true
+  cmo_14:
+    label: CMO 14：涨跌动量（-100至100）
+    description: 上涨幅度总和减下跌幅度总和，再除以两者之和；横盘且两者为0时记0。
+    category: 常用技术指标
+    kind: technical
+    operation: cmo
+    params:
+      n: 14
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  aroon_up_25:
+    label: Aroon 25：距近期新高有多近
+    description: 当天创25期新高为100，越久没有新高越接近0；并列极值取最近一次。
+    category: 常用技术指标
+    kind: technical
+    operation: aroon_up
+    params:
+      n: 25
+    requires:
+    - high
+    - close
+    default_sign: 1
+    chart: true
+  aroon_down_25:
+    label: Aroon 25：距近期新低有多近
+    description: 当天创25期新低为100，越久没有新低越接近0；并列极值取最近一次。
+    category: 常用技术指标
+    kind: technical
+    operation: aroon_down
+    params:
+      n: 25
+    requires:
+    - low
+    - close
+    default_sign: 1
+    chart: true
+  trix_15:
+    label: TRIX 15：三重均线变化率（%）
+    description: 对收盘做三次15期指数平滑，再计算一期变化率。
+    category: 常用技术指标
+    kind: technical
+    operation: trix
+    params:
+      n: 15
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  stoch_rsi_14:
+    label: 随机RSI 14：RSI在近期区间的位置
+    description: 14期RSI在最近14期RSI最大最小值间的位置，0至100；区间为0时保留缺失。
+    category: 常用技术指标
+    kind: technical
+    operation: stoch_rsi
+    params:
+      n: 14
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  turn_volatility_60:
+    label: 60日换手率波动
+    description: 60个交易日换手率的样本标准差，要求窗口完整；仅2019年起。
+    category: 量价与换手
+    kind: technical
+    operation: turn_volatility
+    params:
+      n: 60
+    requires:
+    - turn
+    - close
+    default_sign: 1
+    chart: false
+  drawdown_60:
+    label: 距60期收盘高点的回撤（%）
+    description: 当天收盘相对60期最高收盘的变化，0表示位于高点。
+    category: 常用技术指标
+    kind: technical
+    operation: drawdown
+    params:
+      n: 60
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  downside_volatility_20:
+    label: 20日下跌波动（%）
+    description: 把正收益记为0后，计算20期样本标准差；不是全年波动率。
+    category: 常用技术指标
+    kind: technical
+    operation: downside_volatility
+    params:
+      n: 20
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  ema_trend_gap:
+    label: 20期EMA相对60期EMA的差（%）
+    description: 两条指数均线的比例减1；非负表示快线不低于慢线。
+    category: 常用技术指标
+    kind: technical
+    operation: ema_ratio
+    params:
+      fast: 20
+      slow: 60
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  # ── 动量因子族（跳过近期反转）──────────────────────────────────────────────
+  momentum_1m:
+    label: 1 个月动量（跳过近 20 日）
+    description: 20~41 个交易日前的涨跌幅；跳过最近 20 日规避短期反转效应。
+    category: 动量因子
+    kind: technical
+    operation: momentum
+    params:
+      n: 21
+      skip: 20
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  momentum_3m:
+    label: 3 个月动量（跳过近 20 日）
+    description: 20~83 个交易日前的涨跌幅；中期动量，跳过短期反转效应。
+    category: 动量因子
+    kind: technical
+    operation: momentum
+    params:
+      n: 63
+      skip: 20
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  momentum_6m:
+    label: 6 个月动量（跳过近 20 日）
+    description: 20~146 个交易日前的涨跌幅；中长期动量，A股有效区间。
+    category: 动量因子
+    kind: technical
+    operation: momentum
+    params:
+      n: 126
+      skip: 20
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  momentum_12m:
+    label: 12 个月动量（跳过近 20 日）
+    description: 20~272 个交易日前的涨跌幅；年度动量因子，注意 A 股反转效应较强。
+    category: 动量因子
+    kind: technical
+    operation: momentum
+    params:
+      n: 252
+      skip: 20
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  # ── 均线多头排列得分 ────────────────────────────────────────────────────────
+  ma_alignment_4:
+    label: 均线多头排列得分（5/10/20/60）
+    description: 5>10>20>60 日均线依次满足每项加25分，满分100；0=空头排列，100=强多头排列。
+    category: 趋势与结构
+    kind: technical
+    operation: ma_alignment
+    params:
+      periods:
+      - 5
+      - 10
+      - 20
+      - 60
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  ma_alignment_5:
+    label: 均线多头排列得分（5/10/20/60/120）
+    description: 5>10>20>60>120 日均线依次满足每项加25分；120日纳入中长期视角。
+    category: 趋势与结构
+    kind: technical
+    operation: ma_alignment
+    params:
+      periods:
+      - 5
+      - 10
+      - 20
+      - 60
+      - 120
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  # ── 量价背离 ───────────────────────────────────────────────────────────────
+  vol_price_div_20:
+    label: 量价背离（20日）
+    description: 价格涨幅×成交量涨幅；正值=同向（量价配合），负值=背离（量价异动）。
+    category: 量价与换手
+    kind: technical
+    operation: vol_price_divergence
+    params:
+      n: 20
+    requires:
+    - close
+    - volume
+    default_sign: -1
+    chart: false
+  # ── 基本面质量因子 ──────────────────────────────────────────────────────────
+  accrual_ratio:
+    label: 应计质量比率（EPS - 现金流）/ 净资产
+    description: >
+      每股应计项目占净资产的比例；越高表示利润含非现金成分越多（利润水分）。
+      需要 EPS、每股经营现金流、每股净资产。default_sign=-1（越低越优质）。
+    category: 基本面质量
+    kind: technical
+    operation: accrual_ratio
+    requires:
+    - fund:eps
+    - fund:cashflow_ps
+    - fund:book_value
+    default_sign: -1
+    chart: false
+  cashflow_quality:
+    label: 净现比（现金流 / EPS）
+    description: >
+      每股经营现金流 / |每股收益|；大于 1 表示现金流超过会计利润，利润质量高。
+      需要 EPS 和每股经营现金流。default_sign=+1。
+    category: 基本面质量
+    kind: technical
+    operation: cashflow_quality
+    requires:
+    - fund:eps
+    - fund:cashflow_ps
+    default_sign: 1
+    chart: false
+  roe_trend:
+    label: ROE 环比改善
+    description: >
+      本期 ROE 减上期 ROE；正值表示 ROE 在改善，负值表示在恶化。
+      需要 ROE 财务面板。
+    category: 基本面质量
+    kind: technical
+    operation: roe_trend
+    requires:
+    - fund:roe
+    default_sign: 1
+    chart: false
+  gross_margin_change:
+    label: 毛利率环比变化（%pt）
+    description: >
+      本期毛利率减上期毛利率；正值表示毛利率改善。需要毛利率财务面板。
+    category: 基本面质量
+    kind: technical
+    operation: gross_margin_change
+    params:
+      n: 1
+    requires:
+    - fund:gross_margin
+    default_sign: 1
+    chart: false
+fundamentals:
+  default_quarter: '20260630'
+  max_csv_rows: 100000
+  max_csv_bytes: 8000000
+  max_age_days: 550
+  freshness_days:
+    cap: 0
+    pe_ttm: 0
+    pb: 0
+    dividend_yield: 31
+  quarters:
+  - '20190331'
+  - '20190630'
+  - '20190930'
+  - '20191231'
+  - '20200331'
+  - '20200630'
+  - '20200930'
+  - '20201231'
+  - '20210331'
+  - '20210630'
+  - '20210930'
+  - '20211231'
+  - '20220331'
+  - '20220630'
+  - '20220930'
+  - '20221231'
+  - '20230331'
+  - '20230630'
+  - '20230930'
+  - '20231231'
+  - '20240331'
+  - '20240630'
+  - '20240930'
+  - '20241231'
+  - '20250331'
+  - '20250630'
+  - '20250930'
+  - '20251231'
+  - '20260331'
+  - '20260630'
+  - '20260930'
+  akshare_fields:
+    每股收益: eps
+    营业总收入-同比增长: revenue_growth
+    净利润-同比增长: profit_growth
+    每股净资产: book_value
+    净资产收益率: roe
+    每股经营现金流量: cashflow_ps
+    销售毛利率: gross_margin

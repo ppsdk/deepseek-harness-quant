@@ -1,0 +1,59 @@
+# 本地覆盖：复制为 research.yaml。默认值、策略目录均由 API 提供给页面。
+default_strategy: tech3
+warmup_calendar_days: 400
+chart_max_bars: 160
+factor_catalog:
+  rps_120: {label: '120 日涨跌幅排名', description: '收盘价相对 120 个交易日前的涨幅', default_sign: -1}
+  lowvol_60: {label: '60 日波动率', description: '日收益率的 60 日标准差，缺失日不填充', default_sign: -1}
+  near_high_250: {label: '接近 250 日高点', description: '收盘价相对滚动最高价，至少 125 日样本', default_sign: 1}
+  mom_20: {label: '20 日涨跌幅', description: '过去 20 个交易日涨幅，可反向用于反转实验', default_sign: -1}
+  mom_120: {label: '120 日涨跌幅', description: '过去 120 个交易日涨幅', default_sign: -1}
+  new_high_250: {label: '250 日新高', description: '是否达到滚动高点，至少 125 日样本', default_sign: 1}
+  turn_20d: {label: '20 日平均换手', description: '仅 2019 年起，20 个交易日均有换手数据时有效', default_sign: -1}
+parameters:
+  start: {label: 开始日期, type: date, default: '2019-01-01'}
+  end: {label: 结束日期, type: date, default: null}
+  initial_capital: {label: '初始资金（元）', type: number, default: 1000000, min: 1000, max: 1000000000, step: 10000}
+  topn: {label: 最多选几只股票, type: number, default: 10, min: 1, max: 200, step: 1}
+  stocks: {label: 从多少只已下载股票里选, type: number, default: 100, min: 1, max: 6000, step: 1}
+  codes: {label: '指定代码（逗号分隔，可留空）', type: text, default: ''}
+  rebalance_days: {label: 每隔几个交易日换一次股票, type: number, default: 20, min: 1, max: 252, step: 1}
+  commission_bps: {label: '每次买卖的佣金（基点）', type: number, default: 2.6, min: 0, max: 100, step: 0.1}
+  min_commission: {label: '每笔最低佣金（元）', type: number, default: 5, min: 0, max: 1000, step: 1}
+  stamp_tax_bps: {label: '卖出印花税（基点，固定费率）', type: number, default: 5, min: 0, max: 100, step: 0.1}
+  slippage_bps: {label: '每次买卖的滑点（基点）', type: number, default: 10, min: 0, max: 500, step: 1}
+strategies:
+  tech3:
+    name: 技术三因子
+    category: 策略
+    instant: true
+    desc: 比较过去涨跌、波动大小、离高点多远，三项同等重要；选股后下一交易日开盘成交。
+    factor_list:
+      - {name: rps_120, sign: -1}
+      - {name: lowvol_60, sign: -1}
+      - {name: near_high_250, sign: 1}
+    defaults: {topn: 10, stocks: 100, rebalance_days: 20}
+  lowvol_defense:
+    name: 低波单因子
+    category: 因子
+    instant: true
+    desc: 优先选择过去 60 个交易日每日涨跌较小的股票。
+    factor_list:
+      - {name: lowvol_60, sign: -1}
+    defaults: {topn: 10, stocks: 100, rebalance_days: 20}
+  reversal20:
+    name: 20 日反转
+    category: 因子
+    instant: true
+    desc: 优先选择过去 20 个交易日跌幅较大或涨幅较小的股票；需要回测检验。
+    factor_list:
+      - {name: mom_20, sign: -1}
+    defaults: {topn: 10, stocks: 100, rebalance_days: 20}
+  turn_low:
+    name: 低换手防御
+    category: 策略
+    instant: true
+    desc: 优先选择过去 20 个交易日平均换手率较低的股票；只使用 2019 年及以后数据。
+    factor_list:
+      - {name: turn_20d, sign: -1}
+    defaults: {topn: 20, stocks: 100, rebalance_days: 40}

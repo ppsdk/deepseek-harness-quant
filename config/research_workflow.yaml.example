@@ -1,0 +1,120 @@
+# User-owned indicators, candidate lists and subsequent technical signals.
+formula:
+  max_window: 1000
+  preview_max_stocks: 10
+  preview_max_rows: 500
+  templates:
+    ma: {label: 均线, formula: 'MA(close, 20)', description: 最近20根收盘价的简单平均。, overlay: true}
+    ma_cross: {label: 均线金叉, formula: 'CROSS(MA(close, 5), MA(close, 20))', description: 短均线从下方穿过长均线当天为1，其余有效日期为0。, overlay: false}
+    rsi: {label: RSI强弱指标, formula: 'RSI(close, 14)', description: 取值0到100，周期可以修改。, overlay: false}
+    volume: {label: 成交量相对均量, formula: 'volume / MA(volume, 20)', description: 2表示当天成交量是20根平均成交量的两倍。, overlay: false}
+    low_rsi: {label: 低位转强条件, formula: 'CROSS(RSI(close, 14), 30)', description: RSI从30以下向上穿过30时为1。只是研究示例。, overlay: false}
+    fundamental: {label: 盈利与现金流条件, formula: '(fund_roe >= 10) && (fund_ocf_ps > 0)', description: 需要当时已经公开的ROE及每股经营现金流；缺财务数据时不产生判断。, overlay: false}
+  functions:
+    - {name: MA, example: 'MA(close, 20)', description: 最近20根的简单平均；前面根数不足时留空。}
+    - {name: EMA, example: 'EMA(close, 20)', description: 指数加权平均，仍需足够预热数据。}
+    - {name: REF, example: 'REF(close, 1)', description: 前1根的值；不能填写负数引用未来。}
+    - {name: RSI, example: 'RSI(close, 14)', description: Wilder口径的强弱指标；周期必须是正整数。}
+    - {name: CROSS, example: 'CROSS(MA(close, 5), MA(close, 20))', description: 前一根不高于、当前高于时为1；任一比较值缺失时留空。}
+    - {name: COUNT, example: 'COUNT(close > REF(close, 1), 5)', description: 最近5根条件成立的次数；缺少任一根时留空。}
+    - {name: rank, example: 'rank(fund_roe)', description: 同一天股票之间的百分位排名；单只股票预览不能用来比较选股能力。}
+  comparisons:
+    gt: {label: 大于, symbol: '>'}
+    ge: {label: 不低于, symbol: '>='}
+    lt: {label: 小于, symbol: '<'}
+    le: {label: 不高于, symbol: '<='}
+    cross_up: {label: 向上穿过, function: CROSS}
+    cross_down: {label: 向下穿过, function: CROSS, reverse: true}
+  joins: {all: 全部条件都满足, any: 满足任一条件}
+  fields: {close: 收盘价, open: 开盘价, high: 最高价, low: 最低价, volume: 成交量（股）, amount: 成交额（元）, turn: 换手率（%）}
+signals:
+  max_plans: 200
+  max_conditions: 12
+  max_codes: 200
+  default_history_days: 550
+  default_chart_days: 365
+  presets:
+    ma_cross:
+      label: 均线金叉入场、死叉退出
+      entry: 'CROSS(MA(close, 5), MA(close, 20))'
+      exit: 'CROSS(MA(close, 20), MA(close, 5))'
+      note: 仅示例；候选名单由你先筛选，金叉不保证上涨。
+    rsi_recover:
+      label: RSI从低位回升、跌回50退出
+      entry: 'CROSS(RSI(close, 14), 30)'
+      exit: 'CROSS(50, RSI(close, 14))'
+      note: 使用收盘确认信号，下一交易日才可尝试交易。
+    trend:
+      label: 突破前20日高点、跌破20日均线退出
+      entry: 'CROSS(close, REF(ts_max(high, 20), 1))'
+      exit: 'CROSS(MA(close, 20), close)'
+      note: 比较此前已完成的高点，未使用当天未来价格。
+  states: {entry: 触发入场条件, exit: 触发退出条件, conflict: 买卖条件同时触发，请检查规则, waiting: 等待信号, missing: 数据不足，不能判断, stale: 行情未到所选日期，暂不判断}
+automation:
+  # 本机定时研究任务：步骤按下列顺序执行，后一步使用前一步结果；不下单、不改持仓。
+  harness_url: http://127.0.0.1:3080
+  scheduler_seconds: 60
+  market_wait_seconds: 300
+  ai_send_timeout: 10
+  ai_reply_stable_seconds: 12      # AI 回复连续这么久不变才视为写完
+  ai_reply_timeout_seconds: 900    # 超过这么久仍没有回复就停止等待
+  max_tasks: 30
+  max_years: 15
+  history_limit: 50
+  weekdays: {1: 周一, 2: 周二, 3: 周三, 4: 周四, 5: 周五, 6: 周六, 7: 周日}
+  steps:
+    market_refresh:
+      label: 更新市场观察数据
+      description: 更新指数、板块、恐慌指标和股债数据（不包含个股日线，个股日线请在数据页更新）。
+    market_report:
+      label: 生成每日大盘分析
+      description: 计算趋势、宽度、情绪、量能、恐慌五个维度并打分，同时发给 HARNESS 写大盘日报（AI 部分需 HARNESS 已运行）。
+    screen_pool:
+      label: 按策略选股并保存股票池
+      description: 用最近收盘数据按所选策略排名，保存为带选股日期的股票池；规则与回测相同。
+      params: [strategy, topn, stocks]
+    signal_check:
+      label: 检查入场/退出信号
+      description: 用信号方案检查名单；未选方案时，按条件预设为本次新选的名单新建方案。
+      params: [signal_plan_id, signal_preset]
+    backtest:
+      label: 回测策略（最近 N 年）
+      description: 回测所选策略的最近若干年，自动归档并按五档标准评级。
+      params: [strategy, years]
+    ai_review:
+      label: 发给 AI 复核
+      description: 把本次结果和研究上下文发给 HARNESS 主会话；需要 HARNESS 已运行并配置模型，会消耗模型额度。
+      params: [assistant_task]
+  defaults:
+    time: '16:30'
+    weekdays: [1, 2, 3, 4, 5]
+    topn: 20
+    stocks: 1000
+    years: 3
+    assistant_task: review_backtest
+  templates:
+    - id: after_close
+      label: 收盘后例行：更新市场 → 大盘分析 → 选股存池 → 检查信号
+      steps: [market_refresh, market_report, screen_pool, signal_check]
+    - id: weekly_review
+      label: 每周复盘：回测 → AI 复核
+      steps: [backtest, ai_review]
+      weekdays: [5]
+      time: '17:00'
+quality:
+  start: '2019-01-01'
+  fields: [open, high, low, close, volume, amount, turn]
+  price_fields: [open, high, low, close]
+  optional_unknown_fields: [is_st]
+  batch_size: 40
+  max_codes: 6000
+  calendar_symbol: sh000300
+  calendar_timeout: 15
+  repair_backends: [sina, tencent, eastmoney]
+  source_price_rtol: 0.0001
+  labels: {ready: 未发现已检查范围内的缺口, partial: 仍有缺口需要核对, empty: 尚无本地日线}
+directory_sources:
+  - {function: stock_info_sh_name_code, kwargs: {symbol: 主板A股}, code: 证券代码, ipo: 上市日期, market: SH}
+  - {function: stock_info_sh_name_code, kwargs: {symbol: 科创板}, code: 证券代码, ipo: 上市日期, market: SH}
+  - {function: stock_info_sz_name_code, kwargs: {symbol: A股列表}, code: A股代码, ipo: A股上市日期, market: SZ}
+  - {function: stock_info_bj_name_code, kwargs: {}, code: 证券代码, ipo: 上市日期, market: BJ}

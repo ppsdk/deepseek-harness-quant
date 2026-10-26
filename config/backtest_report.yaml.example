@@ -1,0 +1,42 @@
+page_size: 25
+histogram_bins: 16
+trade_chart:
+  max_bars: 160
+  max_indicators: 6
+  default_indicators: [ma_20, ma_60]
+  marker_labels: {buy: 买, sell: 卖}
+metrics:
+  total_return: {label: 累计收益, format: percent}
+  annual_return: {label: 年化收益, format: percent}
+  max_drawdown: {label: 最大回撤, format: percent}
+  volatility: {label: 年化波动率, format: percent}
+  sharpe: {label: 夏普比率, format: number}
+  sortino: {label: 索提诺比率, format: number}
+  calmar: {label: 收益与回撤之比, format: number}
+  monthly_win_rate: {label: 上涨月份占比, format: percent}
+series:
+  nav: {label: 策略净值（已扣本次费用）, color: '#8baaff'}
+  bench_nav: {label: 所选股票等权参考（未扣费用）, color: '#edbd68'}
+  excess_nav: {label: 策略净值 ÷ 等权参考净值, color: '#b296e8'}
+  drawdown: {label: 从此前最高净值下跌的幅度, color: '#53c9ab'}
+  exposure: {label: 股票市值占总资产比例, color: '#74b6ef'}
+cost_labels:
+  commission: 佣金
+  stamp_tax: 卖出印花税
+  slippage_cost: 滑点影响估计
+side_labels: {buy: 买入, sell: 卖出}
+rejection_reasons:
+  missing_or_suspended: 当日行情缺失或停牌
+  one_price_bar: 当日仅一个价格（引擎保守禁止成交）
+trade_columns:
+  date: 成交日期
+  signal_date: 信号日期
+  code: 股票代码
+  side: 方向
+  trigger: 成交原因
+  quantity: 调整份额
+  fill_price: 成交价
+  amount: 成交金额
+  commission: 佣金
+  stamp_tax: 印花税
+  slippage_cost: 滑点影响

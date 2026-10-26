@@ -9,6 +9,10 @@ if exist "portable-py\Scripts\python.exe" (
   "portable-py\Scripts\python.exe" launcher.py
   goto :end
 )
+if exist ".venv\Scripts\python.exe" (
+  ".venv\Scripts\python.exe" launcher.py
+  goto :end
+)
 python launcher.py
 :end
 pause

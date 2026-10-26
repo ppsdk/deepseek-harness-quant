@@ -1,0 +1,89 @@
+# 横截面选股 + 个股时间序列择时（双层动量）研究页。H = C × S：
+# C 每 rebalance_days 个交易日按横截面因子选出前 topn 名，期间不变；S 是个股自身条件，每天收盘检查。
+universes:
+  index:000300: {label: 沪深300（当前成分股）, symbol: '000300'}
+  index:000905: {label: 中证500（当前成分股）, symbol: '000905'}
+  index:000852: {label: 中证1000（当前成分股）, symbol: '000852'}
+  cache: {label: 本机已下载股票（按代码顺序取前N只）}
+constituents:
+  source: 中证指数公司成分股权重（AKShare index_stock_cons_weight_csindex）
+  cache_dir: data/cache/index_constituents      # 第三方名单只缓存在本机，不入库
+  max_age_days: 30
+  exchanges: {上海证券交易所: SH, 深圳证券交易所: SZ, 北京证券交易所: BJ}
+defaults:
+  universe: index:000300
+  start: '2019-07-01'
+  end: ''
+  cs_factor: roc_20
+  cs_sign: 1
+  cs_n: 20
+  topn: 20
+  rebalance_days: 20
+  ts_factor: roc_20
+  ts_n: 20
+  ts_direction: above
+  ts_threshold: 0
+  initial_capital: 2000000
+  rebalance_threshold_pct: 1
+  horizon: 20
+  cache_stocks: 300
+fields:
+  start: {label: 开始日期, type: date}
+  end: {label: 结束日期（留空为今天）, type: date}
+  cs_n: {label: 选股因子周期（根K线）, min: 2, max: 250, integer: true}
+  topn: {label: 候选名单只数, min: 1, max: 200, integer: true}
+  rebalance_days: {label: 每隔几个交易日更新名单, min: 1, max: 252, integer: true}
+  ts_n: {label: 择时因子周期（根K线）, min: 2, max: 250, integer: true}
+  ts_threshold: {label: 择时阈值（与因子同单位，涨跌幅类为%）, min: -100, max: 100, step: 0.1}
+  initial_capital: {label: 初始资金（元）, min: 10000, max: 1000000000, step: 10000}
+  rebalance_threshold_pct: {label: 调仓日仓位偏差小于多少不微调（%）, min: 0, max: 20, step: 0.1}
+  horizon: {label: 增量检验看未来几个交易日, min: 1, max: 120, integer: true}
+  cache_stocks: {label: 本机股票池取前几只, min: 1, max: 6000, integer: true}
+directions: {above: 高于阈值才持有, below: 低于阈值才持有}
+signs: {'1': 因子值高的优先, '-1': 因子值低的优先}
+# 策略管理目录里的条目（双层动量是策略的一种，在「策略管理」页内运行）
+catalog:
+  id: dual_momentum
+  title: 双层动量：横截面选股 + 个股时间序列择时
+  category: 动量
+  description: 每隔固定交易日按选股因子选出前 N 名；名单内股票每天再看自身择时因子，只有在名单内且择时成立才持有，每只 1/N，其余留现金。同时运行基准、纯选股、纯择时、双层四组对照，并做增量检验和参数稳健性检验。
+  status: 可在本页直接运行；指数股票池使用当前成分股，存在幸存者偏差。
+# 可选的选股/择时因子：必须是带周期参数 n 的技术因子；周期在页面上另填。
+factor_choices: [roc_20, momentum_1m, momentum_3m, bias_20, cmo_14, rsi_14, drawdown_60, volatility_20]
+variants:
+  baseline: {label: A 基准：股票池等权, short: 基准, cs: false, ts: false, color: '#b9bfcb', note: 股票池每只固定1/N槽位，每次更新名单时再平衡。}
+  cross_section: {label: B 纯横截面选股, short: 纯选股, cs: true, ts: false, color: '#e5b85e', note: 只按名单持有，名单期间不因个股走势卖出。}
+  time_series: {label: C 纯个股择时, short: 纯择时, cs: false, ts: true, color: '#48cbaa', note: 股票池每只固定1/N槽位，满足择时条件才持有，其余留现金。}
+  dual: {label: D 双层策略, short: 双层, cs: true, ts: true, color: '#6fa6f0', note: 名单内且满足择时条件才持有，每只目标 1/topn，其余留现金。}
+history_limit: 30
+ai_prompt: |
+  你是量化研究审稿人。下面是一次“横截面选股 × 个股时间序列择时”双层策略的四组对照回测（A 基准、B 纯选股、C 纯择时、D 双层）以及增量检验结果。请用中文回答，结论先行，不超过900字：
+  1. 横截面因子本身有没有预测力：看选股日的排序相关性（IC），训练期和样本外是否一致。
+  2. 择时在已选股票里有没有增量信息：比较名单内“择时成立”和“择时不成立”两组的未来收益差、t值和独立样本数，训练期与样本外是否同向。
+  3. 双层策略的改善来自哪里：对比 D 与 B 的收益、夏普、回撤，并结合平均仓位判断——如果只是因为持有更多现金才降低回撤，不能说明择时有独立预测价值。
+  4. 交易成本与换手：择时带来的额外换手是否吃掉了改善。
+  5. 主要偏差：当前成分股带来的幸存者偏差、两个信号用同一指标的信息重复、样本外长度。
+  6. 下一步最值得做的一到两个检验。
+  只使用提供的数字，缺失写“数据缺失”。这是研究讨论，不构成投资建议。
+limits:
+  limit_pct: {main: 10, st: 5, gem: 20, star: 20, bj: 30}
+  gem_reform_date: '2020-08-24'   # 创业板此前为10%
+  tolerance: 0.002                # 开盘涨跌幅距涨跌停0.2个百分点内视为封板，买入/卖出不成交
+test:
+  split_fraction: 0.6             # 前60%日期为训练期，后40%为样本外
+  min_stocks: 3                   # 名单内两组各至少几只股票，当天才计入增量检验
+  min_days: 6
+grid:
+  lookbacks: [10, 20, 40, 60, 120]
+  rebalances: [5, 10, 20]
+  thresholds: [0, 2, 5]
+  max_runs: 80
+references:
+  - {title: 'Jegadeesh & Titman (1993) Returns to Buying Winners and Selling Losers', url: 'https://doi.org/10.1111/j.1540-6261.1993.tb04702.x', note: 横截面动量的经典研究}
+  - {title: 'Moskowitz, Ooi & Pedersen (2012) Time Series Momentum', url: 'https://doi.org/10.1016/j.jfineco.2011.11.003', note: 时间序列动量的经典研究}
+notes:
+  - 文献结论不能直接证明这里的参数组合有效；参数是研究假设，不是优化结果。
+  - 指数股票池使用当前成分股回测全部历史，会把后来才进入指数的股票带回过去，存在幸存者偏差，收益可能偏高。
+  - 涨跌停按开盘相对前收盘的涨跌幅近似判断（主板10%、ST 5%、创业板2020-08-24前10%之后20%、科创板20%、北交所30%）；一字板与停牌不成交。
+  - 非调仓日只买入新满足条件的股票、卖出不再满足的股票，已有持仓不按权重漂移微调；调仓日把持仓调回目标权重。
+  - 横截面和择时默认都用20日涨幅，两个信号高度相关，增量检验专门回答“择时是否在已选股票里还有额外信息”。

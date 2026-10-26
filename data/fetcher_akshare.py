@@ -15,11 +15,14 @@
    （国内数据源本就不需要代理；用 `_no_proxy` 上下文临时剥离代理环境变量）
 
 新浪日线列名：date, open, high, low, close, volume, amount, outstanding_share, turnover
-→ 需自算 preclose/pct_chg；is_st 置 0（ST 判定以 Baostock 主源为准）。
+→ 自算 preclose/pct_chg（百分数）；turn 统一为百分数，历史 is_st 保留未知。
+批量下载由 data.akshare_loader 根据配置选择东财/新浪/腾讯，并记录实际成功来源。
 """
 import os
 import time
+import threading
 from contextlib import contextmanager
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -33,21 +36,39 @@ _NUM_COLS = ["open", "high", "low", "close", "preclose",
 
 # 新浪/同花顺接口偶发风控 → 重试指数退避
 _RETRY_SLEEP = (1.5, 3.0)
+_PROXY_LOCK = threading.RLock()
 
 
 @contextmanager
-def _no_proxy():
+def _no_proxy(timeout=None):
     """临时剥离系统代理环境变量（调用国内数据源用直连，规避本机代理不稳）"""
-    saved = {k: os.environ.get(k) for k in ("HTTP_PROXY", "HTTPS_PROXY",
-                                            "http_proxy", "https_proxy")}
-    for k in saved:
-        os.environ.pop(k, None)
-    try:
-        yield
-    finally:
-        for k, v in saved.items():
-            if v is not None:
-                os.environ[k] = v
+    # Requests also reads Windows registry proxies; NO_PROXY is needed in addition
+    # to removing upper/lower-case environment proxy variables. Keep this scoped.
+    with _PROXY_LOCK:
+        keys = ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY",
+                "http_proxy", "https_proxy", "all_proxy", "no_proxy")
+        saved = {k: os.environ.get(k) for k in keys}
+        for k in keys:
+            os.environ.pop(k, None)
+        os.environ["NO_PROXY"] = "*"
+        try:
+            if timeout is None:
+                yield
+            else:
+                import requests
+                original = requests.sessions.Session.request
+                def bounded_request(session, method, url, **kwargs):
+                    if kwargs.get("timeout") is None:
+                        kwargs["timeout"] = timeout
+                    return original(session, method, url, **kwargs)
+                with patch.object(requests.sessions.Session, "request", bounded_request):
+                    yield
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
 
 
 def to_ak_symbol(code):
@@ -64,17 +85,58 @@ def to_ak_symbol(code):
 
 # ---------------- 日线（备源）----------------
 
-def fetch_daily(code, start="2010-01-01", end=None, adjust="qfq", retries=2):
+def normalize_daily(df, code, backend, start, end):
+    """Normalize documented AKShare units to the cache contract.
+
+    Prices keep the requested adjustment; volume=shares, amount=CNY,
+    turn/pct_chg=percentage points. Historical ST status stays unknown.
+    """
+    cols = ["date", "code", "open", "high", "low", "close", "preclose",
+            "volume", "amount", "turn", "pct_chg", "is_st"]
+    if df is None or df.empty:
+        return pd.DataFrame(columns=cols)
+    df = df.rename(columns={"日期": "date", "开盘": "open", "最高": "high",
+                            "最低": "low", "收盘": "close", "成交量": "volume",
+                            "成交额": "amount", "换手率": "turn", "turnover": "turn"}).copy()
+    required = {"date", "open", "high", "low", "close", "volume"}
+    if not required.issubset(df.columns):
+        raise ValueError(f"{backend} missing fields: {sorted(required - set(df.columns))}")
+    df["date"] = pd.to_datetime(df["date"], errors="raise").dt.strftime("%Y-%m-%d")
+    df = df.sort_values("date").drop_duplicates("date", keep="last").reset_index(drop=True)
+    for col in ["open", "high", "low", "close", "volume", "amount", "turn"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce") if col in df else float("nan")
+    if backend == "eastmoney":
+        df["volume"] *= 100.0  # hand -> shares; Sina already reports shares
+    if backend in ("sina", "tencent"):
+        df["turn"] *= 100.0  # ratio -> percent, matching Baostock/cache
+    df.loc[df["date"] < "2019-01-01", "turn"] = float("nan")
+    df["code"] = code.upper()
+    df["preclose"] = df["close"].shift(1)
+    df["pct_chg"] = (df["close"] / df["preclose"] - 1.0) * 100.0
+    df["is_st"] = None  # neither current names nor these endpoints prove historical ST
+    return df.loc[df["date"].between(start, end), cols].reset_index(drop=True)
+
+
+def fetch_daily(code, start="2010-01-01", end=None, adjust="qfq", retries=2,
+                backend="sina", timeout=20):
     """直接网络拉取单只日线（新浪源，不读写缓存）。失败重试 retries 次。
 
     返回标准列 DataFrame：date,code,open,high,low,close,preclose,volume,
     amount,turn,pct_chg,is_st（已排序，可空 df）。
-    注：新浪复权接口缺失 preclose/pct_chg → 自算；is_st 置 0（主源为准）。
+    注：preclose/pct_chg 根据有序复权价格自算；历史 is_st 未知。
     """
     import akshare as ak
 
+    if adjust not in ("qfq", "hfq", "none"):
+        raise ValueError("adjust must be qfq, hfq, or none")
+    if backend not in ("sina", "eastmoney", "tencent"):
+        raise ValueError("unknown AKShare daily backend: " + backend)
+    start = pd.Timestamp(start).strftime("%Y-%m-%d")
     if end is None:
         end = time.strftime("%Y-%m-%d")
+    end = pd.Timestamp(end).strftime("%Y-%m-%d")
+    if start > end:
+        raise ValueError("start must not be after end")
     symbol = to_ak_symbol(code)
     start_yyyymmdd = start.replace("-", "")
     end_yyyymmdd = end.replace("-", "")
@@ -82,30 +144,23 @@ def fetch_daily(code, start="2010-01-01", end=None, adjust="qfq", retries=2):
     last_err = None
     for i in range(retries + 1):
         try:
-            with _no_proxy():
-                df = ak.stock_zh_a_daily(symbol=symbol, start_date=start_yyyymmdd,
-                                         end_date=end_yyyymmdd, adjust=adjust)
-            if df is None or df.empty:
-                return pd.DataFrame(columns=["date", "code", "open", "high", "low",
-                                             "close", "preclose", "volume", "amount",
-                                             "turn", "pct_chg", "is_st"])
-            df = df.rename(columns={"turnover": "turn"})
-            df["code"] = code.upper()
-            # 自算 preclose / pct_chg（首行无昨收 → NaN）
-            df["preclose"] = df["close"].shift(1)
-            df["pct_chg"] = df["close"] / df["preclose"] - 1.0
-            df["is_st"] = 0
-            for c in _NUM_COLS:
-                df[c] = pd.to_numeric(df[c], errors="coerce")
-            df = df[["date", "code", "open", "high", "low", "close", "preclose",
-                     "volume", "amount", "turn", "pct_chg", "is_st"]]
-            df = df.sort_values("date").reset_index(drop=True)
-            return df
+            with _no_proxy(timeout=timeout):
+                kw = dict(start_date=start_yyyymmdd, end_date=end_yyyymmdd,
+                          adjust="" if adjust == "none" else adjust)
+                if backend == "eastmoney":
+                    df = ak.stock_zh_a_hist(symbol=code.split(".")[0], period="daily", timeout=timeout, **kw)
+                elif backend == "tencent":
+                    df = ak.stock_zh_a_hist_tx(symbol=symbol, timeout=timeout, **kw)
+                else:
+                    df = ak.stock_zh_a_daily(symbol=symbol, **kw)
+            result = normalize_daily(df, code, backend, start, end)
+            result.attrs["backend"] = backend
+            return result
         except Exception as e:
             last_err = e
             if i < retries:
                 time.sleep(_RETRY_SLEEP[min(i, len(_RETRY_SLEEP) - 1)])
-    raise ConnectionError(f"AkShare(新浪) 拉取失败（重试 {retries} 次后）: {code} {last_err}")
+    raise ConnectionError(f"AkShare({backend}) 拉取失败（重试 {retries} 次后）: {code} {last_err}")
 
 
 def ensure_daily(code, start="2010-01-01", end=None, adjust="qfq",
