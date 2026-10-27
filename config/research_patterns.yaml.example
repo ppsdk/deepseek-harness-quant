@@ -750,7 +750,7 @@ strategies:
   pattern_gaussian:
     name: 高斯通道趋势
     desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有40根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
-    category: 价格结构与量价策略
+    category: 量价与形态
     instant: true
     factor_list:
     - name: gaussian_state
@@ -763,7 +763,7 @@ strategies:
   pattern_wyckoff:
     name: 威科夫量价事件
     desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有40根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
-    category: 价格结构与量价策略
+    category: 量价与形态
     instant: true
     factor_list:
     - name: wyckoff_state
@@ -776,7 +776,7 @@ strategies:
   pattern_naked_k:
     name: 裸K反转与突破
     desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有10根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
-    category: 价格结构与量价策略
+    category: 量价与形态
     instant: true
     factor_list:
     - name: naked_k_state
@@ -789,7 +789,7 @@ strategies:
   pattern_vpts:
     name: 量价箱体突破与回踩
     desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有30根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
-    category: 价格结构与量价策略
+    category: 量价与形态
     instant: true
     factor_list:
     - name: vpts_state
@@ -802,7 +802,7 @@ strategies:
   pattern_kdj:
     name: KDJ低位金叉
     desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有20根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
-    category: 价格结构与量价策略
+    category: 量价与形态
     instant: true
     factor_list:
     - name: kdj_state
@@ -815,7 +815,7 @@ strategies:
   pattern_rsi_divergence:
     name: RSI底背离确认
     desc: 采用规则化看多信号，下一交易日开盘进入候选；看空信号或持有期结束后退出候选。最多持有20根日线，按每日候选排名调仓，仍受持仓数与真实成交限制。
-    category: 价格结构与量价策略
+    category: 量价与形态
     instant: true
     factor_list:
     - name: rsi_divergence_state
@@ -828,7 +828,7 @@ strategies:
   pattern_dow:
     name: 道氏结构：确认突破前高
     desc: 确认高低点抬高并突破已知前高后进入候选；结构走弱、跌破前低或最多60根日线后退出。拐点确认前不提前交易。
-    category: 价格结构与量价策略
+    category: 量价与形态
     instant: true
     factor_list:
     - name: dow_state
@@ -841,7 +841,7 @@ strategies:
   pattern_dow_day_week:
     name: 道氏结构：日周趋势一致
     desc: 日线已经突破前高，且日线与已完成周线都为上涨结构。月线仅供图表对照，不以未结束月线替代。
-    category: 价格结构与量价策略
+    category: 量价与形态
     instant: true
     factor_list:
     - name: dow_state
@@ -860,7 +860,7 @@ strategies:
   pattern_dow_three:
     name: 道氏结构：日周月趋势一致
     desc: 日、已完成周、已完成月三种结构都为上涨时参与。至少需要足够历史确认各周期高低点，缺月线历史时不补造信号。
-    category: 价格结构与量价策略
+    category: 量价与形态
     instant: true
     factor_list:
     - name: dow_day

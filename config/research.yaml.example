@@ -25,7 +25,7 @@ parameters:
 strategies:
   tech3:
     name: 技术三因子
-    category: 策略
+    category: 因子与Alpha
     instant: true
     desc: 比较过去涨跌、波动大小、离高点多远，三项同等重要；选股后下一交易日开盘成交。
     factor_list:
@@ -35,7 +35,7 @@ strategies:
     defaults: {topn: 10, stocks: 100, rebalance_days: 20}
   lowvol_defense:
     name: 低波单因子
-    category: 因子
+    category: 因子与Alpha
     instant: true
     desc: 优先选择过去 60 个交易日每日涨跌较小的股票。
     factor_list:
@@ -43,7 +43,7 @@ strategies:
     defaults: {topn: 10, stocks: 100, rebalance_days: 20}
   reversal20:
     name: 20 日反转
-    category: 因子
+    category: 因子与Alpha
     instant: true
     desc: 优先选择过去 20 个交易日跌幅较大或涨幅较小的股票；需要回测检验。
     factor_list:
@@ -51,7 +51,7 @@ strategies:
     defaults: {topn: 10, stocks: 100, rebalance_days: 20}
   turn_low:
     name: 低换手防御
-    category: 策略
+    category: 因子与Alpha
     instant: true
     desc: 优先选择过去 20 个交易日平均换手率较低的股票；只使用 2019 年及以后数据。
     factor_list:

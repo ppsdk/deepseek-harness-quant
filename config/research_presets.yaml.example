@@ -2,7 +2,7 @@ strategies:
   jq_ma5_filter:
     name: 聚宽教程改编：高于5日均线1%
     desc: 换股日筛选收盘高于5日均线至少1%的股票。简化了原教程在0至1%区间保持原仓的逻辑。
-    category: 平台教程改编
+    category: 技术指标
     source_id: joinquant
     instant: true
     factor_list:
@@ -16,7 +16,7 @@ strategies:
   jq_positive_low_pe:
     name: 聚宽财务教程改编：正市盈率不超过10
     desc: 只采用官方例子中的低PE条件，并排除负值；未采用原市值和营收门槛。需要历史PE记录。
-    category: 平台教程改编
+    category: 基本面
     source_id: joinquant
     instant: true
     factor_list:
@@ -31,7 +31,7 @@ strategies:
   ma_trend:
     name: 均线趋势：20 日不低于 60 日
     desc: 只选 20 日均线不低于 60 日均线的股票，再优先比较 60 日涨幅。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: ma_trend
@@ -46,7 +46,7 @@ strategies:
   ma_golden:
     name: 均线金叉：5 日上穿 20 日
     desc: 只选当天 5 日均线刚上穿 20 日均线的股票，再比较近期涨幅。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: ma_cross
@@ -61,7 +61,7 @@ strategies:
   macd_golden:
     name: MACD 当天金叉
     desc: 只选 DIF 当天从下向上穿过 DEA 的股票，再比较 MACD 柱的大小。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: macd_cross
@@ -76,7 +76,7 @@ strategies:
   rsi_oversold:
     name: RSI 低于 30：寻找超卖
     desc: 只选 RSI 14 不超过 30 的股票，RSI 越低越优先；不代表一定反弹。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: rsi_14
@@ -89,7 +89,7 @@ strategies:
   boll_lower:
     name: 靠近或跌破布林带下轨
     desc: 只选布林带位置不超过 10% 的股票，位置越低越优先。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: boll_position
@@ -102,7 +102,7 @@ strategies:
   volume_breakout:
     name: 放量突破此前 20 日高点
     desc: 收盘达到或超过此前 20 日最高价，且 5 日均量至少为 20 日均量的 1.2 倍。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: breakout_20
@@ -118,7 +118,7 @@ strategies:
   momentum60:
     name: 近三个月涨幅较大
     desc: 按 60 个交易日涨幅排序，涨幅较大者优先。
-    category: 技术指标策略
+    category: 动量
     instant: true
     factor_list:
     - name: roc_60
@@ -130,7 +130,7 @@ strategies:
   stable_atr:
     name: 价格波动较小
     desc: 按 ATR 占股价比例和近 20 日波动排序，两项都较小者优先。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: atr_14
@@ -144,7 +144,7 @@ strategies:
   alpha101_12:
     name: Alpha101 第 12 号：量价变化
     desc: 使用论文第 12 号公式，比较成交量变化方向与当天价格变化。
-    category: Alpha101 示例
+    category: 因子与Alpha
     instant: true
     factor_list:
     - name: alpha101_012
@@ -156,7 +156,7 @@ strategies:
   alpha101_101:
     name: Alpha101 第 101 号：收盘表现
     desc: 使用当天收盘相对开盘的变化，除以当天高低价差；下一交易日才成交。
-    category: Alpha101 示例
+    category: 因子与Alpha
     instant: true
     factor_list:
     - name: alpha101_101
@@ -168,7 +168,7 @@ strategies:
   quality:
     name: 盈利能力与经营现金流
     desc: ROE 与每股经营现金流都大于等于 0，再优先比较 ROE 与毛利率。
-    category: 基本面选股
+    category: 基本面
     instant: true
     factor_list:
     - name: fund_roe
@@ -186,7 +186,7 @@ strategies:
   growth:
     name: 收入和利润共同增长
     desc: 收入和利润同比增长都至少为 10%，再按两项增长率综合排名。
-    category: 基本面选股
+    category: 基本面
     instant: true
     factor_list:
     - name: fund_revenue_growth
@@ -202,7 +202,7 @@ strategies:
   value:
     name: 低估值：正市盈率与正市净率
     desc: 只选 PE、PB 都大于 0 的股票，两个值越低越优先；需要历史估值记录。
-    category: 基本面选股
+    category: 基本面
     instant: true
     factor_list:
     - name: fund_pe_ttm
@@ -218,7 +218,7 @@ strategies:
   dividend:
     name: 股息率较高
     desc: 在过去一年股息率大于 0 的股票中优先选择股息率较高者；需要历史分红数据。
-    category: 基本面选股
+    category: 基本面
     instant: true
     factor_list:
     - name: fund_dividend_yield
@@ -231,7 +231,7 @@ strategies:
   quality_debt:
     name: 盈利较好、负债较低
     desc: ROE 至少 10%，资产负债率不高于 60%，再比较盈利与负债水平；需另导入负债率。
-    category: 基本面选股
+    category: 基本面
     instant: true
     factor_list:
     - name: fund_roe
@@ -247,7 +247,7 @@ strategies:
   ema_trend:
     name: EMA趋势：20期高于60期
     desc: 用自定义均线差判断上升趋势，再优先近期涨幅。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: ema_trend_gap
@@ -262,7 +262,7 @@ strategies:
   cmo_rebound:
     name: CMO超卖观察
     desc: 选择CMO不高于-40的股票，低值优先；不是触底保证。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: cmo_14
@@ -275,7 +275,7 @@ strategies:
   aroon_trend:
     name: Aroon趋势：近期有新高、少见新低
     desc: 选择Aroon上涨线至少80且下跌线不超过30的股票。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: aroon_up_25
@@ -291,7 +291,7 @@ strategies:
   trix_positive:
     name: TRIX向上
     desc: 选择三重指数均线变化率非负的股票，变化较大者优先。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: trix_15
@@ -304,7 +304,7 @@ strategies:
   stoch_rsi_rebound:
     name: 随机RSI低位观察
     desc: 选择随机RSI不超过20的股票，低值优先；只在换股日检查。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: stoch_rsi_14
@@ -317,7 +317,7 @@ strategies:
   turn_stable:
     name: 聚宽文章改编：换手波动较小
     desc: 按60日换手率标准差排序，低值优先；不使用整年缩尾或未来行业分类。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: turn_volatility_60
@@ -329,7 +329,7 @@ strategies:
   downside_defense:
     name: 下跌波动较小
     desc: 比较最近20日下跌波动，较小者优先。
-    category: 技术指标策略
+    category: 技术指标
     instant: true
     factor_list:
     - name: downside_volatility_20
@@ -341,7 +341,7 @@ strategies:
   small_cap_quality:
     name: 小市值与盈利筛选
     desc: 正市值且ROE非负，先比较市值与盈利能力；需要当时可用的历史市值和财务记录。
-    category: 基本面选股
+    category: 基本面
     instant: true
     factor_list:
     - name: fund_cap
@@ -357,7 +357,7 @@ strategies:
   ml_decision_tree:
     name: 决策树选股
     desc: 按滚动训练得到的预测分数排名；只使用预测日前已结束的收益。
-    category: 机器学习选股
+    category: 机器学习
     instant: true
     factor_list:
     - name: ml_decision_tree
@@ -369,7 +369,7 @@ strategies:
   ml_random_forest:
     name: 随机森林选股
     desc: 按滚动训练得到的预测分数排名；只使用预测日前已结束的收益。
-    category: 机器学习选股
+    category: 机器学习
     instant: true
     factor_list:
     - name: ml_random_forest
@@ -381,7 +381,7 @@ strategies:
   ml_extra_trees:
     name: 极端随机树选股
     desc: 按滚动训练得到的预测分数排名；只使用预测日前已结束的收益。
-    category: 机器学习选股
+    category: 机器学习
     instant: true
     factor_list:
     - name: ml_extra_trees
@@ -393,7 +393,7 @@ strategies:
   ml_gradient_boosting:
     name: 梯度提升树选股
     desc: 按滚动训练得到的预测分数排名；只使用预测日前已结束的收益。
-    category: 机器学习选股
+    category: 机器学习
     instant: true
     factor_list:
     - name: ml_gradient_boosting
@@ -405,7 +405,7 @@ strategies:
   ml_ensemble:
     name: 组合模型：树、森林与提升树选股
     desc: 按滚动训练得到的预测分数排名；只使用预测日前已结束的收益。
-    category: 机器学习选股
+    category: 机器学习
     instant: true
     factor_list:
     - name: ml_ensemble
@@ -417,7 +417,7 @@ strategies:
   ml_ridge:
     name: 岭回归选股
     desc: 按滚动训练得到的预测分数排名；只使用预测日前已结束的收益。
-    category: 机器学习选股
+    category: 机器学习
     instant: true
     factor_list:
     - name: ml_ridge
@@ -429,7 +429,7 @@ strategies:
   ml_elastic_net:
     name: 弹性网回归选股
     desc: 按滚动训练得到的预测分数排名；只使用预测日前已结束的收益。
-    category: 机器学习选股
+    category: 机器学习
     instant: true
     factor_list:
     - name: ml_elastic_net
@@ -441,7 +441,7 @@ strategies:
   ml_knn:
     name: 近邻回归 KNN选股
     desc: 按滚动训练得到的预测分数排名；只使用预测日前已结束的收益。
-    category: 机器学习选股
+    category: 机器学习
     instant: true
     factor_list:
     - name: ml_knn
@@ -453,7 +453,7 @@ strategies:
   ml_svr:
     name: 支持向量回归 SVR选股
     desc: 按滚动训练得到的预测分数排名；只使用预测日前已结束的收益。
-    category: 机器学习选股
+    category: 机器学习
     instant: true
     factor_list:
     - name: ml_svr
@@ -465,7 +465,7 @@ strategies:
   ml_hist_gradient_boosting:
     name: 直方图梯度提升树选股
     desc: 按滚动训练得到的预测分数排名；只使用预测日前已结束的收益。
-    category: 机器学习选股
+    category: 机器学习
     instant: true
     factor_list:
     - name: ml_hist_gradient_boosting
