@@ -40,12 +40,6 @@ def get(path,query):
     if path=='/api/studio/market/analysis':
         from data.market_analysis import analysis
         return analysis(query)
-    if path=='/api/studio/dual':
-        from backtest.dual_momentum import overview
-        return overview(query)
-    if path=='/api/studio/dual/detail':
-        from backtest.dual_momentum import detail
-        return detail(query)
     if path=='/api/studio/assistant/context':
         from backtest.research_assistant import context
         return context(query)
@@ -100,9 +94,6 @@ def post(path,payload,compute_lock):
     if path=='/api/studio/market/analysis':
         from data.market_analysis import build
         return build(payload,compute_lock)
-    if path=='/api/studio/dual/ai':
-        from backtest.dual_momentum import ai_review
-        return ai_review(payload)
     if path=='/api/studio/automation/tasks':
         from backtest.research_automation import save_task
         return save_task(payload)

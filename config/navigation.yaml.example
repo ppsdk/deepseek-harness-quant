@@ -1,6 +1,6 @@
 brand: 量化研究
 groups:
-- label: 研究与实验
+- label: 研究
   items:
   - id: research
     label: 研究工作台
@@ -26,28 +26,30 @@ groups:
     label: 机器学习
     ic: cpu
     url: /ml
-  - id: timing
-    label: 市场择时
-    ic: bar
-    url: /timing
-  - id: market
-    label: 大盘分析
-    ic: bar
-    url: /market
-  - id: watchlists
-    label: 保存的股票池
-    ic: target
-    url: /watchlists
+- label: 交易与信号
+  items:
   - id: signals
     label: 候选股信号
     ic: target
     url: /signals
+  - id: timing
+    label: 市场择时
+    ic: bar
+    url: /timing
   - id: positions
     label: 仓位管理
     ic: target
     url: /positions
-- label: 数据与资料
+  - id: watchlists
+    label: 股票池
+    ic: target
+    url: /watchlists
+- label: 行情与数据
   items:
+  - id: market
+    label: 大盘分析
+    ic: bar
+    url: /market
   - id: data
     label: 股票与数据
     ic: db
@@ -56,10 +58,8 @@ groups:
     label: 量化论文
     ic: doc
     url: /papers
-  - id: learn
-    label: 学习教程
-    ic: doc
-    url: /learn
+- label: 工具
+  items:
   - id: control
     label: AI 辅助
     ic: cpu
