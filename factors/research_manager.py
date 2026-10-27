@@ -154,6 +154,11 @@ def _experiment_summary(filename,stamp,size):
     d=json.loads(Path(filename).read_text(encoding='utf-8'))
     record={k:d.get(k) for k in ('run_id','title','strategy','category','generated_at','params','metrics','costs','engine')}
     record['selected_count']=len(d.get('data',{}).get('selected_codes',[]))
+    m=d.get('metrics') or {}
+    record['verdict']=d.get('verdict')
+    record['annual_return']=m.get('annual_return')
+    record['max_drawdown']=m.get('max_drawdown')
+    record['sharpe']=m.get('sharpe')
     return record
 
 
