@@ -364,7 +364,7 @@ factors:
   gaussian_channel:
     label: 高斯滤波通道
     description: 只用当天和过去的价格做单边加权平滑，不使用居中滤波。上、下轨为平滑线加减2倍ATR；通道不是上涨或下跌保证。
-    category: 高斯滤波
+    category: 量价与形态
     kind: pattern
     family: gaussian
     output: center
@@ -375,7 +375,7 @@ factors:
   gaussian_trend:
     label: 高斯平滑方向：上涨1、下跌-1
     description: 只用当天和过去的价格做单边加权平滑，不使用居中滤波。上、下轨为平滑线加减2倍ATR；通道不是上涨或下跌保证。
-    category: 高斯滤波
+    category: 量价与形态
     kind: pattern
     family: gaussian
     output: trend
@@ -386,7 +386,7 @@ factors:
   wyckoff_events:
     label: 威科夫：量价事件与支撑阻力
     description: 这是明确条件的威科夫事件识别，不自动断言主力吸筹或完整操盘阶段。支撑、阻力和平均量都来自此前数据；信号在当天收盘后才知道。
-    category: 威科夫量价识别
+    category: 量价与形态
     kind: pattern
     family: wyckoff
     output: signal
@@ -397,7 +397,7 @@ factors:
   wyckoff_spring:
     label: 威科夫：跌破后收回支撑
     description: 这是明确条件的威科夫事件识别，不自动断言主力吸筹或完整操盘阶段。支撑、阻力和平均量都来自此前数据；信号在当天收盘后才知道。
-    category: 威科夫量价识别
+    category: 量价与形态
     kind: pattern
     family: wyckoff
     output: spring
@@ -408,7 +408,7 @@ factors:
   wyckoff_strength:
     label: 威科夫：放量突破箱体
     description: 这是明确条件的威科夫事件识别，不自动断言主力吸筹或完整操盘阶段。支撑、阻力和平均量都来自此前数据；信号在当天收盘后才知道。
-    category: 威科夫量价识别
+    category: 量价与形态
     kind: pattern
     family: wyckoff
     output: strength
@@ -419,7 +419,7 @@ factors:
   dow_structure:
     label: 日周月道氏结构与确认点
     description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
-    category: 多周期道氏结构
+    category: 量价与形态
     kind: pattern
     family: dow
     output: alignment
@@ -430,7 +430,7 @@ factors:
   dow_day:
     label: 日线道氏方向：上涨1、整理0、下跌-1
     description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
-    category: 多周期道氏结构
+    category: 量价与形态
     kind: pattern
     family: dow
     output: day
@@ -441,7 +441,7 @@ factors:
   dow_week:
     label: 已结束周线道氏方向：上涨1、整理0、下跌-1
     description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
-    category: 多周期道氏结构
+    category: 量价与形态
     kind: pattern
     family: dow
     output: week
@@ -452,7 +452,7 @@ factors:
   dow_month:
     label: 已结束月线道氏方向：上涨1、整理0、下跌-1
     description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
-    category: 多周期道氏结构
+    category: 量价与形态
     kind: pattern
     family: dow
     output: month
@@ -463,7 +463,7 @@ factors:
   dow_known_periods:
     label: 道氏结构已有足够历史的周期数
     description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
-    category: 多周期道氏结构
+    category: 量价与形态
     kind: pattern
     family: dow
     output: known_periods
@@ -474,7 +474,7 @@ factors:
   naked_k_events:
     label: 裸K：吞没、长影线与内包突破
     description: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
-    category: 裸K形态
+    category: 量价与形态
     kind: pattern
     family: naked_k
     output: signal
@@ -485,7 +485,7 @@ factors:
   naked_k_engulfing:
     label: 裸K：实体吞没方向
     description: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
-    category: 裸K形态
+    category: 量价与形态
     kind: pattern
     family: naked_k
     output: engulfing
@@ -496,7 +496,7 @@ factors:
   naked_k_pin_bar:
     label: 裸K：长影线拒绝方向
     description: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
-    category: 裸K形态
+    category: 量价与形态
     kind: pattern
     family: naked_k
     output: pin_bar
@@ -507,7 +507,7 @@ factors:
   naked_k_inside_break:
     label: 裸K：内包后突破方向
     description: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
-    category: 裸K形态
+    category: 量价与形态
     kind: pattern
     family: naked_k
     output: inside_break
@@ -518,7 +518,7 @@ factors:
   vpts_events:
     label: 量价时空：箱体、量比与突破回踩
     description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
-    category: 量价时空
+    category: 量价与形态
     kind: pattern
     family: vpts
     output: signal
@@ -529,7 +529,7 @@ factors:
   vpts_position:
     label: 量价时空：价格在此前箱体的位置（%）
     description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
-    category: 量价时空
+    category: 量价与形态
     kind: pattern
     family: vpts
     output: position
@@ -540,7 +540,7 @@ factors:
   vpts_support_distance:
     label: 量价时空：离支撑位多少倍ATR
     description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
-    category: 量价时空
+    category: 量价与形态
     kind: pattern
     family: vpts
     output: support_distance
@@ -551,7 +551,7 @@ factors:
   vpts_volume_ratio:
     label: 量价时空：当日量相对过去平均量
     description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
-    category: 量价时空
+    category: 量价与形态
     kind: pattern
     family: vpts
     output: volume_ratio
@@ -562,7 +562,7 @@ factors:
   vpts_tight_days:
     label: 量价时空：窄箱体连续持续天数
     description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
-    category: 量价时空
+    category: 量价与形态
     kind: pattern
     family: vpts
     output: tight_days
@@ -573,7 +573,7 @@ factors:
   kdj_signals:
     label: KDJ：三线与低位金叉、高位死叉
     description: 复用平台9周期RSV与两次1/3指数平滑的K、D，J=3K-2D；K和D均不高于30时金叉，均不低于70时死叉。J可以超出0到100，不截断。
-    category: KDJ信号
+    category: 量价与形态
     kind: pattern
     family: kdj
     output: signal
@@ -584,7 +584,7 @@ factors:
   rsi_divergence:
     label: RSI：已确认的顶底背离
     description: 只识别普通顶/底背离：价格创新低而RSI抬高，或价格创新高而RSI降低。对比已确认拐点，等右侧2根K线结束后才发信号，不把信号补画到拐点当天。
-    category: RSI顶底背离
+    category: 量价与形态
     kind: pattern
     family: rsi_divergence
     output: signal
@@ -595,7 +595,7 @@ factors:
   gaussian_signal:
     label: 高斯滤波：当日信号（1看多、-1看空）
     description: 只用当天和过去的价格做单边加权平滑，不使用居中滤波。上、下轨为平滑线加减2倍ATR；通道不是上涨或下跌保证。
-    category: 高斯滤波
+    category: 量价与形态
     kind: pattern
     family: gaussian
     output: signal
@@ -606,7 +606,7 @@ factors:
   gaussian_state:
     label: 高斯滤波：信号有效持有区间
     description: 出现看多信号后为1，看空信号后为0；最多保留40根日线。用于次日开盘回测，不是成交保证。
-    category: 高斯滤波
+    category: 量价与形态
     kind: pattern
     family: gaussian
     output: state
@@ -617,7 +617,7 @@ factors:
   wyckoff_signal:
     label: 威科夫量价识别：当日信号（1看多、-1看空）
     description: 这是明确条件的威科夫事件识别，不自动断言主力吸筹或完整操盘阶段。支撑、阻力和平均量都来自此前数据；信号在当天收盘后才知道。
-    category: 威科夫量价识别
+    category: 量价与形态
     kind: pattern
     family: wyckoff
     output: signal
@@ -628,7 +628,7 @@ factors:
   wyckoff_state:
     label: 威科夫量价识别：信号有效持有区间
     description: 出现看多信号后为1，看空信号后为0；最多保留40根日线。用于次日开盘回测，不是成交保证。
-    category: 威科夫量价识别
+    category: 量价与形态
     kind: pattern
     family: wyckoff
     output: state
@@ -639,7 +639,7 @@ factors:
   dow_signal:
     label: 多周期道氏结构：当日信号（1看多、-1看空）
     description: 高点、低点需等右侧2根K线后确认；标记放在确认日，并写明实际拐点日期。日、周、月各比较最近两个已确认高点和低点：同时抬高为上涨，同时降低为下跌，其余为整理。未结束的周/月不参与。
-    category: 多周期道氏结构
+    category: 量价与形态
     kind: pattern
     family: dow
     output: signal
@@ -650,7 +650,7 @@ factors:
   dow_state:
     label: 多周期道氏结构：信号有效持有区间
     description: 出现看多信号后为1，看空信号后为0；最多保留60根日线。用于次日开盘回测，不是成交保证。
-    category: 多周期道氏结构
+    category: 量价与形态
     kind: pattern
     family: dow
     output: state
@@ -661,7 +661,7 @@ factors:
   naked_k_signal:
     label: 裸K形态：当日信号（1看多、-1看空）
     description: 裸K在这里指只使用价格的吞没、长影线拒绝和内包后突破。前两类要求此前价格方向相反；图形相似不等于下一天一定反转。
-    category: 裸K形态
+    category: 量价与形态
     kind: pattern
     family: naked_k
     output: signal
@@ -672,7 +672,7 @@ factors:
   naked_k_state:
     label: 裸K形态：信号有效持有区间
     description: 出现看多信号后为1，看空信号后为0；最多保留10根日线。用于次日开盘回测，不是成交保证。
-    category: 裸K形态
+    category: 量价与形态
     kind: pattern
     family: naked_k
     output: state
@@ -683,7 +683,7 @@ factors:
   vpts_signal:
     label: 量价时空：当日信号（1看多、-1看空）
     description: 将宽泛的量价时空落实为：过去20根K线的箱体、量比、收窄持续天数、离支撑的ATR距离，以及放量突破和缩量回踩。没有声称覆盖所有流派。
-    category: 量价时空
+    category: 量价与形态
     kind: pattern
     family: vpts
     output: signal
@@ -694,7 +694,7 @@ factors:
   vpts_state:
     label: 量价时空：信号有效持有区间
     description: 出现看多信号后为1，看空信号后为0；最多保留30根日线。用于次日开盘回测，不是成交保证。
-    category: 量价时空
+    category: 量价与形态
     kind: pattern
     family: vpts
     output: state
@@ -705,7 +705,7 @@ factors:
   kdj_signal:
     label: KDJ信号：当日信号（1看多、-1看空）
     description: 复用平台9周期RSV与两次1/3指数平滑的K、D，J=3K-2D；K和D均不高于30时金叉，均不低于70时死叉。J可以超出0到100，不截断。
-    category: KDJ信号
+    category: 量价与形态
     kind: pattern
     family: kdj
     output: signal
@@ -716,7 +716,7 @@ factors:
   kdj_state:
     label: KDJ信号：信号有效持有区间
     description: 出现看多信号后为1，看空信号后为0；最多保留20根日线。用于次日开盘回测，不是成交保证。
-    category: KDJ信号
+    category: 量价与形态
     kind: pattern
     family: kdj
     output: state
@@ -727,7 +727,7 @@ factors:
   rsi_divergence_signal:
     label: RSI顶底背离：当日信号（1看多、-1看空）
     description: 只识别普通顶/底背离：价格创新低而RSI抬高，或价格创新高而RSI降低。对比已确认拐点，等右侧2根K线结束后才发信号，不把信号补画到拐点当天。
-    category: RSI顶底背离
+    category: 量价与形态
     kind: pattern
     family: rsi_divergence
     output: signal
@@ -738,7 +738,7 @@ factors:
   rsi_divergence_state:
     label: RSI顶底背离：信号有效持有区间
     description: 出现看多信号后为1，看空信号后为0；最多保留20根日线。用于次日开盘回测，不是成交保证。
-    category: RSI顶底背离
+    category: 量价与形态
     kind: pattern
     family: rsi_divergence
     output: state

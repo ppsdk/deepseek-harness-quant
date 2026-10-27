@@ -1228,7 +1228,7 @@ factors:
   alpha101_101:
     label: Alpha101 第 101 号：当天涨幅占日内振幅的比例
     description: 用开盘价、收盘价、最高价、最低价计算选股分数。
-    category: 因子与Alpha
+    category: Alpha101
     kind: alpha101
     formula: ((close - open) / ((high - low) + .001))
     requires:
