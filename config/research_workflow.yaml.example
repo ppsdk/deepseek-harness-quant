@@ -93,6 +93,9 @@ automation:
     years: 3
     assistant_task: review_backtest
   templates:
+    - id: daily_market
+      label: 每日盘后：更新市场数据 + 生成大盘分析
+      steps: [market_refresh, market_report]
     - id: after_close
       label: 收盘后例行：更新市场 → 大盘分析 → 选股存池 → 检查信号
       steps: [market_refresh, market_report, screen_pool, signal_check]
