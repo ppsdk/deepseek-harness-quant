@@ -60,15 +60,13 @@ def start(payload,compute_lock):
     from data.research_quality import audit,repair
     from factors.research_formula import preview
     from backtest.research_signals import check
-    from backtest.dual_momentum import run as dual_run,grid as dual_grid
     functions={'factor_analysis':analyse,'ml':run_ml,'backtest':run_research,'timing_compare':compare,
-               'dual_momentum':dual_run,'dual_momentum_grid':dual_grid,
                'papers':lambda _:update_papers(),'stocks':lambda _:update_stocks(),
                'directory':lambda _:update_directory(),'benchmark':lambda p:update_benchmark(p.get('index')),
                'formula_preview':preview,'signal_check':check,'data_audit':audit,'data_repair':repair}
     action=payload.get('action');args=payload.get('params',{})
     if action not in functions or not isinstance(args,dict):raise ValueError('任务类型或参数不正确。')
-    compute=action in ('factor_analysis','ml','backtest','timing_compare','formula_preview','signal_check','data_audit','data_repair','dual_momentum','dual_momentum_grid')
+    compute=action in ('factor_analysis','ml','backtest','timing_compare','formula_preview','signal_check','data_audit','data_repair')
     signature=hashlib.sha256(json.dumps(args,sort_keys=True,ensure_ascii=False,allow_nan=False).encode()).hexdigest()
     with LOCK:
         if action in ACTIVE:

@@ -183,22 +183,6 @@ strategies:
       topn: 10
       stocks: 100
       rebalance_days: 60
-  growth:
-    name: 收入和利润共同增长
-    desc: 收入和利润同比增长都至少为 10%，再按两项增长率综合排名。
-    category: 基本面
-    instant: true
-    factor_list:
-    - name: fund_revenue_growth
-      sign: 1
-      min: 10
-    - name: fund_profit_growth
-      sign: 1
-      min: 10
-    defaults:
-      topn: 10
-      stocks: 100
-      rebalance_days: 60
   value:
     name: 低估值：正市盈率与正市净率
     desc: 只选 PE、PB 都大于 0 的股票，两个值越低越优先；需要历史估值记录。
@@ -1123,21 +1107,6 @@ strategies:
       sign: -1
     holding_filter:
       factor: ma_trend
-      min: 0
-    defaults:
-      topn: 10
-      stocks: 100
-      rebalance_days: 20
-  dual_cs_ts_macd:
-    name: 横截面动量 + MACD 持仓过滤
-    desc: 每隔 20 日用 120 日涨幅选候选；持仓期间每日检查 MACD 红绿柱是否为正，为负则次日卖出。MACD 柱可以提前反映趋势衰减。
-    category: 动量
-    instant: true
-    factor_list:
-    - name: rps_120
-      sign: -1
-    holding_filter:
-      factor: macd_hist
       min: 0
     defaults:
       topn: 10

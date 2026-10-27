@@ -163,10 +163,10 @@ def load_panels(p, cfg, definitions=None):
     if universe and universe.startswith('index:'):
         symbol = universe.split(':', 1)[1]
         try:
-            from backtest.dual_momentum import constituents as _get_constituents
+            from backtest.research_index import constituents as _get_constituents
             from factors.research_library import read_config as _rc
-            _dm_cfg = _rc('dual_momentum')
-            item, warn = _get_constituents(symbol, _dm_cfg)
+            _idx_cfg = _rc('dual_momentum')
+            item, warn = _get_constituents(symbol, _idx_cfg)
             wanted_set = set(item.get('codes', []))
             available = [c for c in available if c in wanted_set]
             if not available:
