@@ -474,6 +474,127 @@ strategies:
       topn: 10
       stocks: 60
       rebalance_days: 20
+  # ── 机器学习 新增 ──────────────────────────────────────────────
+  ml_rf_trend_confirm:
+    name: 随机森林 + 趋势确认
+    desc: 随机森林预测分数排名靠前，同时 20 日均线不低于 60 日均线（趋势向上）。ML 得分筛出候选，趋势过滤减少假信号。
+    category: 机器学习
+    instant: true
+    factor_list:
+    - name: ml_random_forest
+      sign: 1
+    - name: ma_trend
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 60
+      rebalance_days: 20
+  ml_gbm_lowvol:
+    name: 梯度提升树 + 低波动过滤
+    desc: 梯度提升树得分高，同时近 20 日波动率控制在较低水平。适合追求稳健回报的持仓风格。
+    category: 机器学习
+    instant: true
+    factor_list:
+    - name: ml_gradient_boosting
+      sign: 1
+    - name: volatility_20
+      sign: -1
+      max: 3
+    defaults:
+      topn: 10
+      stocks: 60
+      rebalance_days: 20
+  ml_ensemble_quality:
+    name: 组合模型 + 基本面质量门槛
+    desc: 组合模型预测分数优先，同时要求 ROE 为正；ML 负责短期预测，ROE 过滤避免选到亏损公司。
+    category: 机器学习
+    instant: true
+    factor_list:
+    - name: ml_ensemble
+      sign: 1
+    - name: fund_roe
+      sign: 1
+      min: 5
+    defaults:
+      topn: 10
+      stocks: 60
+      rebalance_days: 20
+  ml_hist_gbm_momentum:
+    name: 直方图提升树 + 中期动量
+    desc: 直方图梯度提升树得分结合 3 个月中期动量；ML 因子捕捉短期特征，动量确认中期方向一致。
+    category: 机器学习
+    instant: true
+    factor_list:
+    - name: ml_hist_gradient_boosting
+      sign: 1
+    - name: momentum_3m
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 60
+      rebalance_days: 20
+  ml_rf_et_consensus:
+    name: 随机森林 + 极端随机树双模型共识
+    desc: 两个集成树模型预测方向相同且都排名靠前时，置信度更高；随机森林得分排序，极端随机树做最低分过滤。
+    category: 机器学习
+    instant: true
+    factor_list:
+    - name: ml_random_forest
+      sign: 1
+    - name: ml_extra_trees
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 60
+      rebalance_days: 20
+  ml_ridge_cashflow:
+    name: 岭回归 + 现金流质量过滤
+    desc: 岭回归对线性因子关系捕捉较好；叠加净现比大于 1 的过滤，避免 ML 选到利润质量差的个股。
+    category: 机器学习
+    instant: true
+    factor_list:
+    - name: ml_ridge
+      sign: 1
+    - name: cashflow_quality
+      sign: 1
+      min: 0.5
+    defaults:
+      topn: 10
+      stocks: 60
+      rebalance_days: 20
+  ml_knn_volume:
+    name: KNN近邻 + 成交量确认
+    desc: KNN 通过相似历史样本预测；叠加成交量近期放大（volume_ratio > 1）确认资金参与度，减少无量拉升假信号。
+    category: 机器学习
+    instant: true
+    factor_list:
+    - name: ml_knn
+      sign: 1
+    - name: volume_ratio
+      sign: 1
+      min: 1
+    defaults:
+      topn: 10
+      stocks: 60
+      rebalance_days: 20
+  ml_tree_vs_linear:
+    name: 树模型与线性模型共识
+    desc: 极端随机树（非线性）和弹性网（线性）预测方向一致时，信号更可靠；极端随机树排序，弹性网做正向过滤。
+    category: 机器学习
+    instant: true
+    factor_list:
+    - name: ml_extra_trees
+      sign: 1
+    - name: ml_elastic_net
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 60
+      rebalance_days: 20
   # ── 技术指标 新增 ──────────────────────────────────────────────
   adx_trend:
     name: ADX 趋势确认：趋势强且方向向上
