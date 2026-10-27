@@ -186,4 +186,92 @@ def calculate(spec, p):
         if gm is None:
             raise ValueError('gross_margin_change 需要 fund:gross_margin')
         return gm.diff(int(a.get('n', 1)))
+    # ── 日内价格结构因子 ──────────────────────────────────────────────────────────
+    if op == 'close_location_value':
+        # CLV（Close Location Value）：收盘在日内高低区间的位置
+        # CLV = (Close - Low - (High - Close)) / (High - Low)  ∈ [-1, 1]
+        # 接近 +1 = 强势收盘；接近 -1 = 弱势收盘
+        # n 期平滑：滚动均值，减少单日噪声
+        h = p['high'].astype(float); l = p['low'].astype(float)
+        clv = (c - l - (h - c)) / (h - l).replace(0, np.nan)
+        return clv.rolling(n).mean()
+    if op == 'open_to_close':
+        # 开收比：(Close - Open) / Open  × 100
+        # 正值表示当天买方主导；滚动均值衡量近期盘中趋势
+        o = p['open'].astype(float)
+        daily_o2c = (c - o) / o.replace(0, np.nan) * 100
+        return daily_o2c.rolling(n).mean()
+    if op == 'intraday_range_pct':
+        # 日内振幅占股价的比例（%）：(High - Low) / Close × 100
+        # 滚动均值；高振幅 = 波动大；与 ATR 类似但不含隔夜缺口
+        h = p['high'].astype(float); l = p['low'].astype(float)
+        rng = (h - l) / c.replace(0, np.nan) * 100
+        return rng.rolling(n).mean()
+    if op == 'overnight_gap':
+        # 隔夜跳空：当日开盘 vs 前一日收盘的涨跌幅（%）
+        # 正值 = 跳空高开；负值 = 跳空低开；滚动均值衡量近期机构/消息面冲击
+        o = p['open'].astype(float)
+        gap = (o / c.shift(1).replace(0, np.nan) - 1) * 100
+        return gap.rolling(n).mean()
+    # ── Piotroski F-Score 简化版（基于现有基本面面板）────────────────────────────
+    if op == 'f_score_simple':
+        # 简化版 Piotroski F-Score：4 个可计算项，每项满足得 1 分
+        # 1. ROE > 0（盈利）
+        # 2. 现金流 > 0（经营现金为正）
+        # 3. ROE 在改善（roe_trend > 0）
+        # 4. 毛利率在改善（gross_margin_change > 0）
+        # 满分 4，越高越好；default_sign = +1
+        roe = p.get('fund:roe'); cf = p.get('fund:cashflow_ps')
+        gmc = p.get('fund:gross_margin'); roel = None
+        if roe is not None: roel = roe.diff(1)
+        gmchg = gmc.diff(1) if gmc is not None else None
+        score = pd.DataFrame(0.0, index=c.index, columns=c.columns)
+        if roe is not None: score += (roe > 0).astype(float)
+        if cf is not None: score += (cf > 0).astype(float)
+        if roel is not None: score += (roel > 0).astype(float)
+        if gmchg is not None: score += (gmchg > 0).astype(float)
+        return score
+    # ── 换手率结构因子 ────────────────────────────────────────────────────────────
+    if op == 'turnover_acceleration':
+        # 换手率加速：近期换手率均值 vs 中期换手率均值的比值
+        # 比值 > 1 表示近期成交活跃度在加速上升
+        # params: n = 短期窗口（默认 5），m = 中期窗口（默认 20）
+        turn = p.get('turn')
+        if turn is None:
+            raise ValueError('turnover_acceleration 需要 turn（换手率）字段')
+        m = int(a.get('m', n * 4))  # 中期默认为短期的 4 倍
+        short_ma = turn.rolling(n).mean()
+        long_ma = turn.rolling(m).mean()
+        return divide(short_ma, long_ma)
+    if op == 'turnover_shrink':
+        # 换手率收缩：当前换手率 / n 日最高换手率
+        # 比值越小 = 成交越萎缩；萎缩后突破往往是新趋势起点
+        # default_sign = -1（越萎缩越优先，等待突破）
+        turn = p.get('turn')
+        if turn is None:
+            raise ValueError('turnover_shrink 需要 turn 字段')
+        return divide(turn, turn.rolling(n).max())
+    # ── OBV 动量因子 ──────────────────────────────────────────────────────────────
+    if op == 'obv_momentum':
+        # OBV 的 n 期涨跌幅：衡量资金流累计的变化速度
+        # 比 OBV 绝对值更能捕捉近期资金流加速；OBV 从 0 起步时用安全除法避免 inf
+        vol = p['volume'].astype(float)
+        sign = (c.diff().apply(np.sign)).fillna(0)
+        obv = (vol * sign).cumsum()
+        return divide(obv - obv.shift(n), obv.shift(n).abs().replace(0, np.nan)) * 100
+    # ── 价格相对高点的位置因子 ────────────────────────────────────────────────────
+    if op == 'price_vs_high':
+        # 收盘价 / n 日最高收盘价（%）：衡量价格距历史高点的接近程度
+        # 越接近 100% = 价格越强；超过前高 = 突破
+        return (c / c.rolling(n).max().replace(0, np.nan)) * 100
+    if op == 'price_vs_low':
+        # 收盘价 / n 日最低收盘价（%）：距近期低点的上涨幅度
+        # 越高 = 反弹越充分；可用于过滤过度反弹
+        return (c / c.rolling(n).min().replace(0, np.nan)) * 100
+    # ── 价格位置综合因子 ──────────────────────────────────────────────────────────
+    if op == 'price_percentile':
+        # 价格在 n 日区间中的百分位（0—100）
+        # 类似布林带位置，但使用最高/最低而非标准差
+        lo = c.rolling(n).min(); hi = c.rolling(n).max()
+        return divide(c - lo, hi - lo) * 100
     raise ValueError('未知指标算法：' + op)

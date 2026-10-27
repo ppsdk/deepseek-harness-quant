@@ -995,3 +995,105 @@ strategies:
       topn: 10
       stocks: 100
       rebalance_days: 60
+  # ── 新 Alpha 因子策略（IC 验证后）──────────────────────────────────────────────
+  low_intraday_range:
+    name: 低日内振幅：稳定收盘精选
+    desc: 近 20 日平均日内振幅（High-Low)/Close 越低越优先；低振幅股通常噪音少，IC=+0.12，胜率 75%，A股实证中表现最稳定的日内结构因子。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: intraday_range_20
+      sign: -1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  intraday_range_ma_confirm:
+    name: 低振幅 + 均线趋势
+    desc: 近 20 日振幅低（稳定）且 20 日均线高于 60 日均线（趋势向上）。稳定性过滤结合方向确认，减少选到盘整中的低波股。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: intraday_range_20
+      sign: -1
+    - name: ma_trend
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  overnight_gap_momentum:
+    name: 隔夜跳空动量：持续高开
+    desc: 近 20 日平均隔夜跳空为正，表示机构/消息面持续看好，次日开盘持续高于前收。IC=+0.04，胜率 71%，顺向信号中一致性较好。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: overnight_gap_20
+      sign: 1
+      min: 0
+    - name: roc_20
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  turnover_burst_reversal:
+    name: 放量急涨后反转：换手率加速反向
+    desc: 换手率近 5 日显著高于近 20 日（加速放量），往往是追高资金涌入后的短期见顶信号；加速越多越优先，逆向选股。IC=-0.05，胜率 68%。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: turnover_acceleration_5
+      sign: -1
+      min: 1.5
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  obv_reversal:
+    name: OBV 过度加速后反转
+    desc: OBV 近 20 日涨幅过大（资金追涨过度），往往伴随后续调整；default_sign=-1，OBV 涨幅越大越优先做反向选股。IC=-0.05，胜率 70%。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: obv_momentum_20
+      sign: -1
+    - name: rsi_14
+      sign: -1
+      max: 70
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  price_percentile_reversal:
+    name: 价格低位百分位：近期区间低点反弹
+    desc: 收盘价在 60 日高低区间中的百分位越低（越靠近底部）后续反弹越强；IC=-0.06，胜率 64%，反转效应显著。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: price_percentile_60
+      sign: -1
+      max: 30
+    - name: roc_20
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  intraday_overnight_combo:
+    name: 低振幅 + 隔夜跳空复合
+    desc: 振幅低（稳健）且隔夜跳空为正（消息面偏多）的股票；两个高 IC 日内结构因子叠加，共同指向稳定上涨的结构。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: intraday_range_20
+      sign: -1
+    - name: overnight_gap_20
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10

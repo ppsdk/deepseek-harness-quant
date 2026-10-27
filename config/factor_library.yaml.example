@@ -942,6 +942,174 @@ factors:
     - fund:gross_margin
     default_sign: 1
     chart: false
+  # ── 日内价格结构 ─────────────────────────────────────────────────────────────────
+  clv_20:
+    label: 收盘位置指数（20日均值）
+    description: >
+      CLV = (Close-Low-(High-Close))/(High-Low)，∈[-1,1]；接近+1表示强势收盘，接近-1表示弱势收盘。
+      20日滚动均值消除单日噪声。default_sign=+1（持续强势收盘为正信号）。
+    category: 日内价格结构
+    kind: technical
+    operation: close_location_value
+    params:
+      n: 20
+    requires:
+    - close
+    - high
+    - low
+    default_sign: -1
+    chart: true
+  o2c_20:
+    label: 开收比（20日均值，%）
+    description: >
+      (Close-Open)/Open×100，衡量盘中买方主导程度；20日滚动均值。
+      持续正值表示资金尾盘偏多；default_sign=+1。
+    category: 日内价格结构
+    kind: technical
+    operation: open_to_close
+    params:
+      n: 20
+    requires:
+    - close
+    - open
+    default_sign: -1
+    chart: true
+  intraday_range_20:
+    label: 日内振幅占股价（20日均值，%）
+    description: >
+      (High-Low)/Close×100的20日滚动均值；高振幅=价格弹性大，类ATR但不含隔夜缺口。
+      default_sign=-1（低振幅=稳健，防守型持仓偏好）。
+    category: 日内价格结构
+    kind: technical
+    operation: intraday_range_pct
+    params:
+      n: 20
+    requires:
+    - close
+    - high
+    - low
+    default_sign: -1
+    chart: true
+  overnight_gap_20:
+    label: 隔夜跳空（20日均值，%）
+    description: >
+      当日开盘/前日收盘-1，捕捉隔夜信息冲击；20日均值衡量近期持续跳空方向。
+      正值=持续高开，负值=持续低开；default_sign=+1。
+    category: 日内价格结构
+    kind: technical
+    operation: overnight_gap
+    params:
+      n: 20
+    requires:
+    - close
+    - open
+    default_sign: 1
+    chart: true
+  # ── Piotroski F-Score 简化版 ──────────────────────────────────────────────────────
+  f_score_simple:
+    label: Piotroski F-Score 简化版（0—4分）
+    description: >
+      4项盈利质量评分：ROE>0、经营现金流>0、ROE改善、毛利率改善，各满足得1分。
+      满分4分，越高越好。需要ROE、每股现金流、毛利率财务面板。
+    category: 基本面质量
+    kind: technical
+    operation: f_score_simple
+    params: {}
+    requires:
+    - fund:roe
+    - fund:cashflow_ps
+    - fund:gross_margin
+    default_sign: 1
+    chart: false
+  # ── 换手率结构 ────────────────────────────────────────────────────────────────────
+  turnover_acceleration_5:
+    label: 换手率加速（5日/20日）
+    description: >
+      近5日换手率均值/近20日换手率均值；>1表示近期成交活跃度在加速上升，资金关注度提升。
+      default_sign=+1（加速=信号）。2019年前数据缺失。
+    category: 量价结构
+    kind: technical
+    operation: turnover_acceleration
+    params:
+      n: 5
+      m: 20
+    requires:
+    - turn
+    default_sign: -1
+    chart: true
+  turnover_shrink_20:
+    label: 换手率收缩（当前/20日最高）
+    description: >
+      当前换手率/20日最高换手率；越小=成交越萎缩，价格蓄势期特征。
+      default_sign=-1（越萎缩越优先，等待放量突破）。2019年前数据缺失。
+    category: 量价结构
+    kind: technical
+    operation: turnover_shrink
+    params:
+      n: 20
+    requires:
+    - turn
+    default_sign: -1
+    chart: true
+  # ── OBV 动量 ──────────────────────────────────────────────────────────────────────
+  obv_momentum_20:
+    label: OBV 20日涨幅（%）
+    description: >
+      OBV（On-Balance Volume）的20日变化率；衡量资金流累积加速方向。
+      比OBV绝对值更能捕捉近期资金流趋势变化。default_sign=+1。
+    category: 量价结构
+    kind: technical
+    operation: obv_momentum
+    params:
+      n: 20
+    requires:
+    - close
+    - volume
+    default_sign: -1
+    chart: true
+  # ── 价格相对位置 ───────────────────────────────────────────────────────────────────
+  price_vs_high_60:
+    label: 价格距60日高点（%）
+    description: >
+      收盘价/60日最高收盘价×100；越接近100%=价格越强，超过100%=创新高突破。
+      default_sign=+1（强势接近历史高点为正信号）。
+    category: 价格位置
+    kind: technical
+    operation: price_vs_high
+    params:
+      n: 60
+    requires:
+    - close
+    default_sign: -1
+    chart: true
+  price_vs_high_250:
+    label: 价格距250日高点（%，52周）
+    description: >
+      收盘价/250日最高收盘价×100；52周新高动量因子的连续版。
+      越高=距历史顶部越近，与near_high_250相关但为连续值。default_sign=+1。
+    category: 价格位置
+    kind: technical
+    operation: price_vs_high
+    params:
+      n: 250
+    requires:
+    - close
+    default_sign: -1
+    chart: true
+  price_percentile_60:
+    label: 价格60日区间百分位（%）
+    description: >
+      收盘价在过去60日高低区间中的百分位（0—100）；类布林带位置但用极值而非标准差。
+      高位=价格处于近期强势区间；default_sign=+1。
+    category: 价格位置
+    kind: technical
+    operation: price_percentile
+    params:
+      n: 60
+    requires:
+    - close
+    default_sign: -1
+    chart: true
 fundamentals:
   default_quarter: '20260630'
   max_csv_rows: 100000
