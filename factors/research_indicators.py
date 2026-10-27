@@ -274,4 +274,69 @@ def calculate(spec, p):
         # 类似布林带位置，但使用最高/最低而非标准差
         lo = c.rolling(n).min(); hi = c.rolling(n).max()
         return divide(c - lo, hi - lo) * 100
+    # ── 波动率结构因子 ────────────────────────────────────────────────────────────
+    if op == 'return_skew':
+        # n 期日收益率的偏度：正偏=右尾大（偶尔大涨），负偏=左尾大（偶尔大跌）
+        # A股负偏股往往后续反弹（彩票效应反向）；default_sign=-1
+        rets = c.pct_change(fill_method=None)
+        return rets.rolling(n).skew()
+    if op == 'max_daily_return':
+        # n 期内最大单日涨幅（%）：彩票型因子，大涨后往往回调
+        # default_sign=-1（max 越大越优先做反向）
+        rets = c.pct_change(fill_method=None) * 100
+        return rets.rolling(n).max()
+    if op == 'downside_realized_vol':
+        # 下行已实现波动率：只统计负收益日的波动，衡量下行风险
+        # 比全样本波动率更能反映亏损风险；default_sign=-1
+        rets = c.pct_change(fill_method=None)
+        neg = rets.where(rets < 0, 0)
+        return neg.rolling(n).std() * (252 ** 0.5)
+    # ── 价格惯性细化因子 ──────────────────────────────────────────────────────────
+    if op == 'overnight_intraday_split':
+        # 隔夜收益占比 = 隔夜收益 / 总收益（绝对值）
+        # 隔夜=开盘/前收-1；日内=收盘/开盘-1；总=收盘/前收-1
+        # 比值接近1=隔夜主导（消息面驱动）；接近0=日内主导（盘中资金驱动）
+        o = p['open'].astype(float)
+        overnight = o / c.shift(1).replace(0, np.nan) - 1
+        intraday = c / o.replace(0, np.nan) - 1
+        total = overnight + intraday
+        return divide(overnight.abs(), total.abs().replace(0, np.nan))
+    if op == 'new_high_strength':
+        # 52周新高强度：收盘价 / 250日最高价，但只在创新高时计入
+        # 非新高时为0，新高时 >1 表示突破力度；default_sign=+1
+        hi = c.rolling(250).max()
+        ratio = c / hi
+        return ratio.where(ratio >= 1.0, 0)
+    # ── 资金流持续性因子 ──────────────────────────────────────────────────────────
+    if op == 'price_pressure':
+        # 价格压力：n 期内上涨日成交量加权涨幅
+        # 衡量买方持续性力量；越高=买方主导越强；default_sign=+1
+        vol = p['volume'].astype(float)
+        rets = c.pct_change(fill_method=None)
+        up_days = rets.where(rets > 0, 0)
+        return (up_days * vol).rolling(n).sum() / vol.rolling(n).sum().replace(0, np.nan)
+    if op == 'amihud_illiquidity':
+        # Amihud 非流动性：n 期平均 |日收益| / 日成交额
+        # 衡量单位资金推动价格的难度；越高=流动性越差；default_sign=-1
+        amt = p.get('amount')
+        if amt is None:
+            amt = vol * c
+        rets = c.pct_change(fill_method=None).abs()
+        return divide(rets, amt.replace(0, np.nan)).rolling(n).mean() * 1e10
+    # ── 质量衍生基本面因子 ────────────────────────────────────────────────────────
+    if op == 'profit_margin':
+        # 净利润率近似：每股收益 / 每股净资产
+        # 衡量盈利效率，越高越好；default_sign=+1
+        eps = p.get('fund:eps')
+        book = p.get('fund:book_value')
+        if eps is None or book is None:
+            raise ValueError('profit_margin 需要 fund:eps / fund:book_value')
+        return divide(eps, book.abs().replace(0, np.nan)) * 100
+    if op == 'asset_growth_proxy':
+        # 资产增速近似：每股净资产环比变化（%）
+        # 高增速=快速扩张，但也可能过度杠杆；default_sign=-1（A股资产增速过高往往后续走弱）
+        book = p.get('fund:book_value')
+        if book is None:
+            raise ValueError('asset_growth_proxy 需要 fund:book_value')
+        return book.pct_change(1, fill_method=None) * 100
     raise ValueError('未知指标算法：' + op)

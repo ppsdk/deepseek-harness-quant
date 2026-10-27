@@ -1110,6 +1110,143 @@ factors:
     - close
     default_sign: -1
     chart: true
+  price_percentile_60:
+    label: 价格60日区间百分位（%）
+    description: >
+      收盘价在过去60日高低区间中的百分位（0—100）；类布林带位置但用极值而非标准差。
+      高位=价格处于近期强势区间；IC实证方向为-1（低位反弹更强）。
+    category: 价格位置
+    kind: technical
+    operation: price_percentile
+    params:
+      n: 60
+    requires:
+    - close
+    default_sign: -1
+    chart: true
+  # ── 波动率结构因子 ────────────────────────────────────────────────────────────────
+  return_skew_20:
+    label: 日收益偏度（20日）
+    description: >
+      20日日收益率偏度；负偏=左尾大（偶尔大跌），A股中负偏股往往后续反弹（彩票效应反向）。default_sign=-1。
+    category: 波动率结构
+    kind: technical
+    operation: return_skew
+    params:
+      n: 20
+    requires:
+    - close
+    default_sign: -1
+    chart: true
+  max_daily_return_20:
+    label: 20日最大单日涨幅（%）
+    description: >
+      过去20日内单日涨幅最大值；追涨陷阱，创了大涨后往往走弱。default_sign=-1。
+    category: 波动率结构
+    kind: technical
+    operation: max_daily_return
+    params:
+      n: 20
+    requires:
+    - close
+    default_sign: -1
+    chart: true
+  downside_realized_vol_20:
+    label: 下行已实现波动率（20日，年化）
+    description: >
+      只统计负收益日的波动率年化；比全样本波动率更能反映亏损风险。default_sign=-1。
+    category: 波动率结构
+    kind: technical
+    operation: downside_realized_vol
+    params:
+      n: 20
+    requires:
+    - close
+    default_sign: -1
+    chart: true
+  # ── 价格惯性细化 ──────────────────────────────────────────────────────────────────
+  overnight_intraday_split_20:
+    label: 隔夜收益占比（20日均值）
+    description: >
+      |隔夜收益|/|总收益|的20日均值；接近1=消息面主导；接近0=盘中资金主导。default_sign=+1。
+    category: 日内价格结构
+    kind: technical
+    operation: overnight_intraday_split
+    params:
+      n: 20
+    requires:
+    - close
+    - open
+    default_sign: 1
+    chart: true
+  new_high_strength_250:
+    label: 52周新高突破强度
+    description: >
+      股价超过250日最高价时取收盘/最高，其余为0；越高=突破越强劲。default_sign=+1。
+    category: 价格位置
+    kind: technical
+    operation: new_high_strength
+    params:
+      n: 250
+    requires:
+    - close
+    default_sign: 1
+    chart: true
+  # ── 资金流持续性 ──────────────────────────────────────────────────────────────────
+  price_pressure_20:
+    label: 价格买方压力（20日）
+    description: >
+      20日上涨日成交量加权涨幅之和/总成交量；越高=买方持续性越强。default_sign=+1。
+    category: 量价结构
+    kind: technical
+    operation: price_pressure
+    params:
+      n: 20
+    requires:
+    - close
+    - volume
+    default_sign: 1
+    chart: true
+  amihud_illiquidity_20:
+    label: Amihud 非流动性（20日均值）
+    description: >
+      20日均值|日收益|/日成交额×10^10；越高=流动性越差。default_sign=-1（偏好流动性好的股票）。
+    category: 量价结构
+    kind: technical
+    operation: amihud_illiquidity
+    params:
+      n: 20
+    requires:
+    - close
+    - volume
+    default_sign: -1
+    chart: true
+  # ── 质量衍生基本面因子 ────────────────────────────────────────────────────────────
+  profit_margin_proxy:
+    label: 净利润率近似（EPS/每股净资产，%）
+    description: >
+      每股收益/每股净资产×100；近似衡量净利润率，越高=盈利效率越好。需要fund:eps和fund:book_value。
+    category: 基本面质量
+    kind: technical
+    operation: profit_margin
+    params: {}
+    requires:
+    - fund:eps
+    - fund:book_value
+    default_sign: 1
+    chart: false
+  asset_growth_proxy:
+    label: 资产增速近似（每股净资产环比变化，%）
+    description: >
+      每股净资产环比变化率；高增速可能过度杠杆，A股资产快速扩张后往往走弱。default_sign=-1。
+    category: 基本面质量
+    kind: technical
+    operation: asset_growth_proxy
+    params: {}
+    requires:
+    - fund:book_value
+    default_sign: -1
+    chart: false
 fundamentals:
   default_quarter: '20260630'
   max_csv_rows: 100000
