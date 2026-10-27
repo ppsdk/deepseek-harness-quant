@@ -140,6 +140,10 @@ def load_panels(p, cfg, definitions=None):
     from backtest.research_signals import prepare,attach
     definitions,signal_plan=prepare(p,cfg,definitions if definitions is not None else factor_definitions())
     wanted=cfg['strategies'][p['strategy']]['factor_list']+([{'name':'signal_entry'},{'name':'signal_exit'}] if signal_plan else [])
+    # include holding_filter factor in warmup calculation
+    hf_cfg = cfg['strategies'][p['strategy']].get('holding_filter')
+    if hf_cfg and hf_cfg.get('factor'):
+        wanted = wanted + [{'name': hf_cfg['factor']}]
     from factors.research_library import pattern_requirements
     extra_days,pattern_families=pattern_requirements([f['name'] for f in wanted],definitions)
     from factors.research_controls import warmup_days
@@ -188,10 +192,21 @@ def load_panels(p, cfg, definitions=None):
               for field in fields}
     from factors.research_library import attach_extra_panels
     attach_extra_panels(panels, codes, warmup, p['end'], wanted, cache,definitions)
+    # ── holding filter panel ──────────────────────────────────────────────────
+    hf = cfg['strategies'][p['strategy']].get('holding_filter')
+    if hf and hf.get('factor') and hf['factor'] in definitions:
+        from factors.research_library import raw_factor
+        try:
+            panels['_holding_filter'] = raw_factor(hf['factor'], panels, definitions)
+        except Exception:
+            pass
+    p['holding_filter'] = hf or None
     from backtest.research_timing import attach_timing
     attach_timing(panels,p,cache,warmup,p['end'])
     fingerprint = hashlib.sha256()
     for field, panel in panels.items():
+        if not isinstance(panel, pd.DataFrame):
+            continue
         fingerprint.update(field.encode())
         fingerprint.update(','.join(panel.columns).encode())
         fingerprint.update(pd.util.hash_pandas_object(panel, index=True).values.tobytes())

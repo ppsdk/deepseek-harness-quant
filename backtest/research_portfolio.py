@@ -49,11 +49,35 @@ def simulate(panels, score, p):
     dates = close.index[(close.index >= p['start']) & (close.index <= p['end'])]
     stale_days = 0
     realized = {}
+    hf = p.get('holding_filter')
+    hf_panel = panels.get('_holding_filter') if hf else None
+    hf_min = hf.get('min') if hf else None
+    hf_max = hf.get('max') if hf else None
+    hf_active = hf_panel is not None
+    cached_ranked = pd.Series(dtype=float)
     for day_number, day in enumerate(dates):
         pos = close.index.get_loc(day)
         opening = panels['open'].loc[day]
         signal_day = close.index[pos - 1] if pos > 0 else None
         if signal_day is not None:
+            # ── daily holding filter (time-series gating) ──────────────────
+            if hf_active:
+                for code in list(shares):
+                    if code in pending:
+                        continue
+                    try:
+                        val = hf_panel.at[signal_day, code]
+                    except KeyError:
+                        val = float('nan')
+                    if not np.isfinite(val):
+                        continue
+                    fail = False
+                    if hf_min is not None and val < hf_min:
+                        fail = True
+                    if hf_max is not None and val > hf_max:
+                        fail = True
+                    if fail:
+                        pending[code] = dict(trigger='holding_filter', signal_date=signal_day)
             for code in shares:
                 if code in pending:
                     continue

@@ -1097,3 +1097,64 @@ strategies:
       topn: 10
       stocks: 100
       rebalance_days: 10
+  # ── 双层动量风格策略（横截面选股 + 日频时序持仓过滤）────────────────────────────
+  dual_cs_ts_roc20:
+    name: 横截面动量 + 时序过滤（20日）
+    desc: 每隔 20 日用 120 日涨幅选出候选名单；候选内每日检查个股 20 日涨幅，低于 0 则次日卖出等待重新入选。实现双层动量的核心逻辑，无需独立模块。
+    category: 动量
+    instant: true
+    factor_list:
+    - name: rps_120
+      sign: -1
+    holding_filter:
+      factor: roc_20
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  dual_cs_ts_ma_trend:
+    name: 横截面动量 + 均线趋势持仓过滤
+    desc: 每隔 20 日用 120 日涨幅选候选；持仓期间每日检查 20日均线是否高于 60日均线，不满足则次日卖出。均线趋势比涨幅更平滑，减少频繁进出。
+    category: 动量
+    instant: true
+    factor_list:
+    - name: rps_120
+      sign: -1
+    holding_filter:
+      factor: ma_trend
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  dual_cs_ts_macd:
+    name: 横截面动量 + MACD 持仓过滤
+    desc: 每隔 20 日用 120 日涨幅选候选；持仓期间每日检查 MACD 红绿柱是否为正，为负则次日卖出。MACD 柱可以提前反映趋势衰减。
+    category: 动量
+    instant: true
+    factor_list:
+    - name: rps_120
+      sign: -1
+    holding_filter:
+      factor: macd_hist
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  dual_cs_ts_ema_gap:
+    name: 横截面低波 + EMA 趋势持仓过滤
+    desc: 每隔 20 日用 60 日低波动率选候选（防守型选股）；持仓期间每日检查 EMA 短长差是否为正，为负则次日卖出，避免拿着下跌的低波股。
+    category: 动量
+    instant: true
+    factor_list:
+    - name: lowvol_60
+      sign: -1
+    holding_filter:
+      factor: ema_trend_gap
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
