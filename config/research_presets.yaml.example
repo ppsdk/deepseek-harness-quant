@@ -474,3 +474,403 @@ strategies:
       topn: 10
       stocks: 60
       rebalance_days: 20
+  # ── 技术指标 新增 ──────────────────────────────────────────────
+  adx_trend:
+    name: ADX 趋势确认：趋势强且方向向上
+    desc: ADX 高于 25 表明当前有明显趋势；+DI 高于 -DI 则方向向上。先用 ADX 门槛过滤，再按 +DI 排序选强势股。
+    category: 技术指标
+    instant: true
+    factor_list:
+    - name: adx_14
+      sign: 1
+      min: 25
+    - name: dmi_plus_14
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  cci_rebound:
+    name: CCI 超卖反弹：低于 -100 后回升
+    desc: 只选 CCI 20 低于 -100 的股票（超卖区间），CCI 越低越优先；需结合其他条件确认反转信号。
+    category: 技术指标
+    instant: true
+    factor_list:
+    - name: cci_20
+      sign: -1
+      max: -100
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 5
+  ma_alignment:
+    name: 均线多头排列（5/10/20/60）
+    desc: 四条均线完全多头排列，排列得分越高越优先；再用 20 日涨幅验证动量方向。适合趋势延续阶段持有。
+    category: 技术指标
+    instant: true
+    factor_list:
+    - name: ma_alignment_4
+      sign: 1
+      min: 4
+    - name: roc_20
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  volume_ma_breakout:
+    name: 量能放大 + 均线趋势
+    desc: 成交量近 5 日均量高于近 20 日均量（量比 > 1）表明资金参与度上升；叠加均线多头排列过滤。
+    category: 技术指标
+    instant: true
+    factor_list:
+    - name: ma_trend
+      sign: 1
+      min: 0
+    - name: volume_ratio
+      sign: 1
+      min: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  obv_divergence:
+    name: OBV 积累：成交量持续偏向收涨
+    desc: OBV 越大表示过去 20 日净主动买入量越多；价格未创新高但 OBV 已创新高是资金悄悄介入的信号。
+    category: 技术指标
+    instant: true
+    factor_list:
+    - name: obv_20
+      sign: 1
+    - name: roc_20
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  boll_squeeze_breakout:
+    name: 布林带收窄后突破上轨
+    desc: 布林带宽度低于近期均值时股价进入蓄势阶段；股价突破上轨时往往伴随波动率扩张。先按宽度过滤，再按突破位置排序。
+    category: 技术指标
+    instant: true
+    factor_list:
+    - name: boll_width
+      sign: -1
+      max: 15
+    - name: boll_position
+      sign: 1
+      min: 80
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 5
+  mfi_oversold:
+    name: MFI 资金流超卖
+    desc: MFI（Money Flow Index）将成交量引入 RSI 框架；低于 20 表明价量双超卖，可能出现反弹。
+    category: 技术指标
+    instant: true
+    factor_list:
+    - name: mfi_14
+      sign: -1
+      max: 20
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 5
+  # ── 量价与形态 新增 ──────────────────────────────────────────
+  donchian_breakout:
+    name: 唐奇安通道突破：创 20 日新高
+    desc: 收盘价突破过去 20 个交易日最高价，即 breakout_20 大于 0；突破幅度越大说明突破力度越强。
+    category: 量价与形态
+    instant: true
+    factor_list:
+    - name: breakout_20
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 5
+  cmf_accumulation:
+    name: CMF 资金持续流入
+    desc: CMF（Chaikin Money Flow）衡量过去 20 日成交量加权的收盘位置；持续正值表明买方控制盘面。
+    category: 量价与形态
+    instant: true
+    factor_list:
+    - name: cmf_20
+      sign: 1
+      min: 0.05
+    - name: ma_trend
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  wr_reversal:
+    name: 威廉指标 WR 超卖观察
+    desc: WR 14 低于 -80 进入超卖区间；先过滤超卖股票，再按 WR 绝对值排序（最超卖优先）。与 RSI 指向相近，但对短期价格位置更敏感。
+    category: 量价与形态
+    instant: true
+    factor_list:
+    - name: wr_14
+      sign: -1
+      max: -80
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 5
+  vol_price_convergence:
+    name: 量价背离修复：背离后价格归位
+    desc: 量价背离得分较低时价格已领先成交量运动，成交量可能跟随追涨；适合捕捉背离消除后的延续行情。
+    category: 量价与形态
+    instant: true
+    factor_list:
+    - name: vol_price_div_20
+      sign: -1
+      max: -0.1
+    - name: roc_20
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  # ── 动量 新增 ──────────────────────────────────────────────────
+  cross_momentum_3m:
+    name: 3 个月横截面动量（跳过近 20 日）
+    desc: 排序 3 个月动量（跳过最近 20 个交易日）。去掉近期反转效应后，中期强势股往往继续跑赢；需要回测评估换手成本。
+    category: 动量
+    instant: true
+    factor_list:
+    - name: momentum_3m
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  cross_momentum_6m:
+    name: 6 个月横截面动量（跳过近 20 日）
+    desc: 排序 6 个月动量（跳过最近 20 个交易日）。Jegadeesh & Titman 原始研究区间；中期动量效应在 A 股也有文献支持。
+    category: 动量
+    instant: true
+    factor_list:
+    - name: momentum_6m
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  cross_momentum_12m:
+    name: 12 个月横截面动量（跳过近 20 日）
+    desc: 排序 12 个月动量（跳过最近 20 个交易日）。长周期动量通常与趋势跟踪结合；需注意换手率较低但单次持有期更长。
+    category: 动量
+    instant: true
+    factor_list:
+    - name: momentum_12m
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  momentum_ma_filter:
+    name: 中期动量 + 均线多头过滤
+    desc: 6 个月动量（跳过近 20 日）排名靠前，同时 20 日均线高于 60 日均线（趋势确认）。两层过滤减少假动量信号。
+    category: 动量
+    instant: true
+    factor_list:
+    - name: momentum_6m
+      sign: 1
+    - name: ma_trend
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  drawdown_recovery:
+    name: 回撤修复动量：回撤大但已开始反弹
+    desc: 近 60 日处于较大回撤中（回撤绝对值大），同时近 20 日已出现反弹（roc_20 > 0）。捕捉"超跌反弹"中已确认方向的股票。
+    category: 动量
+    instant: true
+    factor_list:
+    - name: drawdown_60
+      sign: 1
+      max: -10
+    - name: roc_20
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  # ── 基本面 新增 ─────────────────────────────────────────────
+  quality_growth:
+    name: 质量 + 成长双因子
+    desc: 同时要求 ROE 为正且净利润同比增长。ROE 衡量股东回报质量，增速确认成长性；两项都强的公司较少见，但胜率较高。
+    category: 基本面
+    instant: true
+    factor_list:
+    - name: fund_roe
+      sign: 1
+      min: 8
+    - name: fund_profit_growth
+      sign: 1
+      min: 10
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 60
+  cashflow_quality_screen:
+    name: 现金流质量筛选：净现比大于 1
+    desc: 每股经营现金流 / |每股收益| 大于 1 说明利润背后有真实现金流支撑，利润含金量高；与盈利增长联合使用效果更好。
+    category: 基本面
+    instant: true
+    factor_list:
+    - name: cashflow_quality
+      sign: 1
+      min: 1
+    - name: fund_profit_growth
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 60
+  roe_improving:
+    name: ROE 持续改善
+    desc: ROE 环比在上升（roe_trend > 0）表示盈利质量正在边际改善；与绝对 ROE 水平结合，避免选到已到顶的高 ROE 股。
+    category: 基本面
+    instant: true
+    factor_list:
+    - name: roe_trend
+      sign: 1
+      min: 0
+    - name: fund_roe
+      sign: 1
+      min: 5
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 60
+  margin_expansion:
+    name: 毛利率扩张：毛利率在改善
+    desc: 毛利率环比上升（gross_margin_change > 0）意味着定价能力或成本控制在改善；高毛利率且仍在扩张的公司具有护城河特征。
+    category: 基本面
+    instant: true
+    factor_list:
+    - name: gross_margin_change
+      sign: 1
+      min: 0
+    - name: fund_gross_margin
+      sign: 1
+      min: 20
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 60
+  revenue_profit_growth:
+    name: 收入利润双增长（增速更严格）
+    desc: 营收同比增长 > 15% 且净利润增速 > 20%；利润增速高于营收通常说明规模效应或提价带来的利润率提升。
+    category: 基本面
+    instant: true
+    factor_list:
+    - name: fund_revenue_growth
+      sign: 1
+      min: 15
+    - name: fund_profit_growth
+      sign: 1
+      min: 20
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 60
+  # ── 因子与Alpha 新增 ──────────────────────────────────────────
+  alpha101_001_screen:
+    name: Alpha101 第 1 号：下跌波动 vs 价格高点
+    desc: 比较近期下跌波动和价格距高点距离；该因子倾向识别短期超卖或下跌动能耗竭的股票。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: alpha101_001
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 5
+  alpha101_006_screen:
+    name: Alpha101 第 6 号：价格与成交量同步性
+    desc: 衡量价格变动与成交量变化的一致程度；同步性低可能意味着量价背离或资金悄悄流出。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: alpha101_006
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 5
+  alpha101_033_screen:
+    name: Alpha101 第 33 号：开盘与收盘的对比
+    desc: 比较开盘价和收盘价的相对关系；持续以强势收盘的股票获得更高分。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: alpha101_033
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 5
+  alpha101_038_screen:
+    name: Alpha101 第 38 号：近期价格位置与当天涨跌
+    desc: 结合近期价格在区间中的位置与当天涨跌幅；可以识别处于强势价格区间且当天收涨的股票。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: alpha101_038
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 5
+  alpha101_053_screen:
+    name: Alpha101 第 53 号：收盘位置变化
+    desc: 观察近期收盘价在日内高低区间中位置的变化；位置持续上移说明买方力量在增强。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: alpha101_053
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 5
+  lowvol_momentum:
+    name: 低波 + 中期动量：防守性趋势
+    desc: 优先选择波动率低且 3 个月动量为正的股票。低波因子控制下行风险，动量确认趋势；适合稳健持仓风格。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: volatility_20
+      sign: -1
+    - name: momentum_3m
+      sign: 1
+      min: 0
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  accrual_quality:
+    name: 应计质量：利润含金量高
+    desc: 应计质量比率越低说明利润中非现金成分越少（含金量高）；过滤应计比率极高的股票，再按 ROE 排序。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: accrual_ratio
+      sign: -1
+    - name: fund_roe
+      sign: 1
+      min: 5
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 60
