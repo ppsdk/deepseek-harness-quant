@@ -155,6 +155,20 @@ def load_panels(p, cfg, definitions=None):
                 'SELECT DISTINCT code FROM daily_bar WHERE adjust=? AND date BETWEEN ? AND ?',
                 ('qfq', warmup, p['end'])))
     available = sorted(code for code in available if re.fullmatch(r'\d{6}\.(SH|SZ|BJ)', code))
+    universe = p.get('universe', 'cache')
+    if universe and universe.startswith('index:'):
+        symbol = universe.split(':', 1)[1]
+        try:
+            from backtest.dual_momentum import constituents as _get_constituents
+            from factors.research_library import read_config as _rc
+            _dm_cfg = _rc('dual_momentum')
+            item, warn = _get_constituents(symbol, _dm_cfg)
+            wanted_set = set(item.get('codes', []))
+            available = [c for c in available if c in wanted_set]
+            if not available:
+                raise ValueError('指数 %s 成分股在本机缓存中没有数据，请先下载数据。' % symbol)
+        except ImportError:
+            pass  # dual_momentum not available, fall through to cache
     if p['codes'].strip():
         codes = sorted({c.strip().upper() for c in p['codes'].split(',') if c.strip()})
         if any(c not in available for c in codes):

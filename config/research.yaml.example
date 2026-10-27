@@ -15,7 +15,8 @@ parameters:
   end: {label: 结束日期, type: date, default: null}
   initial_capital: {label: '初始资金（元）', type: number, default: 1000000, min: 1000, max: 1000000000, step: 10000}
   topn: {label: 最多选几只股票, type: number, default: 10, min: 1, max: 200, step: 1}
-  stocks: {label: 从多少只已下载股票里选, type: number, default: 100, min: 1, max: 6000, step: 1}
+  stocks: {label: 从多少只已下载股票里选（股票池为"全部缓存"时有效）, type: number, default: 100, min: 1, max: 6000, step: 1}
+  universe: {label: 股票池, type: select, default: cache, options: {cache: 全部本机缓存（按代码顺序取前N只）, index:000300: 沪深300当前成分股, index:000905: 中证500当前成分股, index:000852: 中证1000当前成分股}}
   codes: {label: '指定代码（逗号分隔，可留空）', type: text, default: ''}
   rebalance_days: {label: 每隔几个交易日换一次股票, type: number, default: 20, min: 1, max: 252, step: 1}
   commission_bps: {label: '每次买卖的佣金（基点）', type: number, default: 2.6, min: 0, max: 100, step: 0.1}
