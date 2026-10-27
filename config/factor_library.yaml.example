@@ -479,7 +479,7 @@ factors:
   fund_roe:
     label: 净资产收益率 ROE（%）
     description: 衡量公司使用股东资金盈利的能力。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: roe
     requires:
@@ -488,7 +488,7 @@ factors:
   fund_revenue_growth:
     label: 营业收入同比增长（%）
     description: 与上一年同期相比，收入增长多少。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: revenue_growth
     requires:
@@ -497,7 +497,7 @@ factors:
   fund_profit_growth:
     label: 净利润同比增长（%）
     description: 与上一年同期相比，利润增长多少；上年亏损时需谨慎解释。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: profit_growth
     requires:
@@ -506,7 +506,7 @@ factors:
   fund_gross_margin:
     label: 销售毛利率（%）
     description: 收入扣除直接营业成本后的比例。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: gross_margin
     requires:
@@ -515,7 +515,7 @@ factors:
   fund_eps:
     label: 每股收益（元）
     description: 报告期累计每股收益，不自动当成年化收益。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: eps
     requires:
@@ -524,7 +524,7 @@ factors:
   fund_book_value:
     label: 每股净资产（元）
     description: 每股对应的账面净资产。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: book_value
     requires:
@@ -533,7 +533,7 @@ factors:
   fund_cashflow_ps:
     label: 每股经营现金流（元）
     description: 经营活动产生的累计现金流，不等于每股利润。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: cashflow_ps
     requires:
@@ -542,7 +542,7 @@ factors:
   fund_pe_ttm:
     label: 市盈率 PE（过去一年）
     description: 股价相对过去一年每股收益；只选择大于 0 的值再比较低估值。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: pe_ttm
     requires:
@@ -551,7 +551,7 @@ factors:
   fund_pb:
     label: 市净率 PB
     description: 股价相对每股净资产；只选择大于 0 的值再比较低估值。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: pb
     requires:
@@ -560,7 +560,7 @@ factors:
   fund_dividend_yield:
     label: 过去一年股息率（%）
     description: 需要含历史可用日期的股息率记录；不使用未来分红。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: dividend_yield
     requires:
@@ -569,7 +569,7 @@ factors:
   fund_debt_ratio:
     label: 资产负债率（%）
     description: 负债占资产的比例；金融与非金融企业不可直接混比。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: debt_ratio
     requires:
@@ -578,7 +578,7 @@ factors:
   fund_cap:
     label: 总市值（元）
     description: 需要当日真实总市值；不能用今天市值回填历史。
-    category: 基本面选股
+    category: 基本面
     kind: fundamental
     metric: cap
     requires:
@@ -741,7 +741,7 @@ factors:
   turn_volatility_60:
     label: 60日换手率波动
     description: 60个交易日换手率的样本标准差，要求窗口完整；仅2019年起。
-    category: 量价与换手
+    category: 量价结构
     kind: technical
     operation: turn_volatility
     params:
@@ -845,7 +845,7 @@ factors:
   ma_alignment_4:
     label: 均线多头排列得分（5/10/20/60）
     description: 5>10>20>60 日均线依次满足每项加25分，满分100；0=空头排列，100=强多头排列。
-    category: 趋势与结构
+    category: 常用技术指标
     kind: technical
     operation: ma_alignment
     params:
@@ -861,7 +861,7 @@ factors:
   ma_alignment_5:
     label: 均线多头排列得分（5/10/20/60/120）
     description: 5>10>20>60>120 日均线依次满足每项加25分；120日纳入中长期视角。
-    category: 趋势与结构
+    category: 常用技术指标
     kind: technical
     operation: ma_alignment
     params:
@@ -879,7 +879,7 @@ factors:
   vol_price_div_20:
     label: 量价背离（20日）
     description: 价格涨幅×成交量涨幅；正值=同向（量价配合），负值=背离（量价异动）。
-    category: 量价与换手
+    category: 量价结构
     kind: technical
     operation: vol_price_divergence
     params:
@@ -895,7 +895,7 @@ factors:
     description: >
       每股应计项目占净资产的比例；越高表示利润含非现金成分越多（利润水分）。
       需要 EPS、每股经营现金流、每股净资产。default_sign=-1（越低越优质）。
-    category: 基本面质量
+    category: 基本面
     kind: technical
     operation: accrual_ratio
     requires:
@@ -909,7 +909,7 @@ factors:
     description: >
       每股经营现金流 / |每股收益|；大于 1 表示现金流超过会计利润，利润质量高。
       需要 EPS 和每股经营现金流。default_sign=+1。
-    category: 基本面质量
+    category: 基本面
     kind: technical
     operation: cashflow_quality
     requires:
@@ -922,7 +922,7 @@ factors:
     description: >
       本期 ROE 减上期 ROE；正值表示 ROE 在改善，负值表示在恶化。
       需要 ROE 财务面板。
-    category: 基本面质量
+    category: 基本面
     kind: technical
     operation: roe_trend
     requires:
@@ -933,7 +933,7 @@ factors:
     label: 毛利率环比变化（%pt）
     description: >
       本期毛利率减上期毛利率；正值表示毛利率改善。需要毛利率财务面板。
-    category: 基本面质量
+    category: 基本面
     kind: technical
     operation: gross_margin_change
     params:
@@ -1011,7 +1011,7 @@ factors:
     description: >
       4项盈利质量评分：ROE>0、经营现金流>0、ROE改善、毛利率改善，各满足得1分。
       满分4分，越高越好。需要ROE、每股现金流、毛利率财务面板。
-    category: 基本面质量
+    category: 基本面
     kind: technical
     operation: f_score_simple
     params: {}
@@ -1226,7 +1226,7 @@ factors:
     label: 净利润率近似（EPS/每股净资产，%）
     description: >
       每股收益/每股净资产×100；近似衡量净利润率，越高=盈利效率越好。需要fund:eps和fund:book_value。
-    category: 基本面质量
+    category: 基本面
     kind: technical
     operation: profit_margin
     params: {}
@@ -1239,7 +1239,7 @@ factors:
     label: 资产增速近似（每股净资产环比变化，%）
     description: >
       每股净资产环比变化率；高增速可能过度杠杆，A股资产快速扩张后往往走弱。default_sign=-1。
-    category: 基本面质量
+    category: 基本面
     kind: technical
     operation: asset_growth_proxy
     params: {}
