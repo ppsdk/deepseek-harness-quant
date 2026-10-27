@@ -1127,3 +1127,64 @@ strategies:
       topn: 10
       stocks: 100
       rebalance_days: 20
+  # ── 第二批 IC 验证因子策略 ─────────────────────────────────────────────────────
+  lottery_reversal:
+    name: 彩票反转：最大单日涨幅反向
+    desc: 过去 20 日内单日涨幅最大的股票往往后续走弱（追涨陷阱）；涨幅越大越优先做反向选股。IC=0.108，胜率 78.8%，是最强的波动率结构因子之一。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: max_daily_return_20
+      sign: -1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  buyer_pressure_reversal:
+    name: 买方压力反转：放量上涨后回调
+    desc: 20 日内上涨日成交量加权涨幅越高（买方持续性强），后续反而走弱（追涨效应）；压力越大越优先做反向选股。IC=0.119，胜率 80.3%，所有新因子中预测力最强。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: price_pressure_20
+      sign: -1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10
+  illiquidity_premium:
+    name: 流动性溢价：低流动性股票
+    desc: Amihud 非流动性指标越高（单位资金推动价格越容易），风险溢价越高；选非流动性较高的股票，偏好小盘流动性差的标的。IC=0.086，胜率 69.7%。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: amihud_illiquidity_20
+      sign: 1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  downside_vol_reversal:
+    name: 下行波动率反转：低下行风险优先
+    desc: 只统计负收益日的下行已实现波动率；越低=下行风险越小，后续表现越好。比全样本波动率更能识别稳健标的。IC=0.080，胜率 70.8%。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: downside_realized_vol_20
+      sign: -1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 20
+  return_skew_reversal:
+    name: 偏度反转：负偏股优先
+    desc: 20 日日收益率偏度越负（偶尔大跌），A股中往往后续反弹（彩票效应反向）；偏度越负越优先。IC=0.032，胜率 68.4%。
+    category: 因子与Alpha
+    instant: true
+    factor_list:
+    - name: return_skew_20
+      sign: -1
+    defaults:
+      topn: 10
+      stocks: 100
+      rebalance_days: 10

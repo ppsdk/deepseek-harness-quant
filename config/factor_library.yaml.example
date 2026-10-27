@@ -1177,7 +1177,7 @@ factors:
     requires:
     - close
     - open
-    default_sign: 1
+    default_sign: -1
     chart: true
   new_high_strength_250:
     label: 52周新高突破强度
@@ -1190,7 +1190,7 @@ factors:
       n: 250
     requires:
     - close
-    default_sign: 1
+    default_sign: -1
     chart: true
   # ── 资金流持续性 ──────────────────────────────────────────────────────────────────
   price_pressure_20:
@@ -1205,7 +1205,7 @@ factors:
     requires:
     - close
     - volume
-    default_sign: 1
+    default_sign: -1
     chart: true
   amihud_illiquidity_20:
     label: Amihud 非流动性（20日均值）
@@ -1219,7 +1219,7 @@ factors:
     requires:
     - close
     - volume
-    default_sign: -1
+    default_sign: 1
     chart: true
   # ── 质量衍生基本面因子 ────────────────────────────────────────────────────────────
   profit_margin_proxy:
