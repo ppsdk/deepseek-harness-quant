@@ -1,4 +1,22 @@
 factors:
+  weighted_rank_composite:
+    label: 稳健加权排名复合因子
+    description: 对多个因子做当日截面排名并按权重聚合，支持不同方向和缺失值门槛；不依赖PCA。
+    category: 复杂复合算法
+    kind: composite
+    operation: weighted_rank_composite
+    dependencies:
+    - roc_20
+    - volatility_20
+    - bias_20
+    params:
+      weights: [1.0, 1.0, 1.0]
+      signs: [1, -1, 1]
+      min_features: 2
+    requires:
+    - close
+    default_sign: 1
+    chart: false
   rolling_pca_score:
     label: 滚动PCA复合因子
     description: 在每个交易日只使用此前窗口的多个因子拟合PCA，并输出当前截面第一主成分得分；可直接用于选股和回测。

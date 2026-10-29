@@ -91,6 +91,18 @@ class IndicatorTests(unittest.TestCase):
         changed = raw_factor('rolling_pca_test', future, definitions)
         pd.testing.assert_frame_equal(out.iloc[:-1], changed.iloc[:-1])
 
+    def test_registered_weighted_rank_composite_without_pca(self):
+        from factors.research_library import raw_factor
+        p = sample(80)
+        spec = {'id': 'weighted_test', 'kind': 'composite',
+                'operation': 'weighted_rank_composite',
+                'dependencies': ['roc_20', 'volatility_20', 'bias_20'],
+                'params': {'weights': [2, 1, 1], 'signs': [1, -1, 1], 'min_features': 2}}
+        defs = {**factor_definitions(), 'weighted_test': spec}
+        out = raw_factor('weighted_test', p, defs)
+        self.assertEqual(out.shape, p['close'].shape)
+        self.assertTrue(np.isfinite(out.iloc[-1].to_numpy()).any())
+
     def test_rsi_sided_flat_wilder_seed_and_cci(self):
         p = sample(60)
         for values, expected in ((np.arange(60)+10,100),(70-np.arange(60),0),(np.full(60,10),50)):

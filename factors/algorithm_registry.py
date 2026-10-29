@@ -100,9 +100,49 @@ def _rolling_pca_score(spec, panels, definitions):
     return pd.DataFrame(out, index=index, columns=columns)
 
 
+def _weighted_rank_composite(spec, panels, definitions):
+    """稳健加权截面复合因子，不依赖 PCA 或训练模型。
+
+    每个交易日独立排名，按权重聚合有效因子；缺失值只从当日分母中移除，
+    不以前后日期填补，适合把技术、基本面和机器学习输出混合进同一策略。
+    """
+    from factors.research_library import raw_factor
+
+    names = list(spec.get("dependencies") or (spec.get("params") or {}).get("features") or [])
+    params = spec.get("params") or {}
+    weights = params.get("weights") or [1.0] * len(names)
+    signs = params.get("signs") or [1.0] * len(names)
+    min_features = int(params.get("min_features", 1))
+    if not names or len(weights) != len(names) or len(signs) != len(names):
+        raise ValueError("weighted_rank_composite 的 features、weights、signs 长度必须一致。")
+    if min_features < 1 or min_features > len(names):
+        raise ValueError("weighted_rank_composite 的 min_features 超出因子数量。")
+    weights = np.asarray(weights, dtype=float)
+    signs = np.asarray(signs, dtype=float)
+    if (not np.isfinite(weights).all() or (weights <= 0).any()
+            or not np.isin(signs, (-1, 1)).all()):
+        raise ValueError("weighted_rank_composite 的权重必须为正数，方向必须为 1 或 -1。")
+    frames = [raw_factor(name, panels, definitions).rank(axis=1, pct=True) * sign
+              for name, sign in zip(names, signs)]
+    stack = np.stack([frame.to_numpy(float) for frame in frames], axis=2)
+    valid = np.isfinite(stack)
+    count = valid.sum(axis=2)
+    weighted = np.where(valid, stack * weights.reshape(1, 1, -1), 0.0)
+    denominator = np.where(valid, weights.reshape(1, 1, -1), 0.0).sum(axis=2)
+    result = weighted.sum(axis=2) / np.where(denominator == 0, np.nan, denominator)
+    result[count < min_features] = np.nan
+    return pd.DataFrame(result, index=panels["close"].index, columns=panels["close"].columns)
+
+
 register_factor_algorithm(
     "rolling_pca_score", _rolling_pca_score,
     label="滚动PCA复合因子", category="复杂复合算法", kind="composite",
+    research_capabilities=["factor", "screen", "backtest"],
+    causal=True, output="cross_sectional_score",
+)
+register_factor_algorithm(
+    "weighted_rank_composite", _weighted_rank_composite,
+    label="稳健加权排名复合因子", category="复杂复合算法", kind="composite",
     research_capabilities=["factor", "screen", "backtest"],
     causal=True, output="cross_sectional_score",
 )
