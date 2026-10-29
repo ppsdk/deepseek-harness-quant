@@ -1,0 +1,179 @@
+base_config: mainboard_repair_v3
+output_dir: output/strategy_research/mainboard_technical_v1
+rounds:
+- id: round_1
+  discovery:
+    start: '2019-01-01'
+    end: '2022-12-31'
+  validation:
+    start: '2023-01-01'
+    end: '2024-12-31'
+- id: round_2_extended
+  discovery:
+    start: '2019-01-01'
+    end: '2024-12-31'
+  validation:
+    start: '2025-01-01'
+    end: '2025-12-31'
+acceptance:
+  max_annual_one_way_turnover: 3.0
+  min_average_exposure: 0.08
+  min_trade_dates: 4
+finalists: 3
+execution:
+  topn: 5
+  max_traded_codes_per_day: 5
+  max_position_pct: 20
+  selection_policy: stable_diverse
+variants:
+- id: exposure60
+  target_exposure_pct: 60
+- id: exposure80
+  target_exposure_pct: 80
+candidates:
+  dual_momentum:
+    average: sma
+    fast: 20
+    slow: 60
+    confirm_days: 2
+    momentum_periods:
+    - 63
+    - 126
+    absolute_period: 63
+    skip_days: 0
+    score: momentum
+    risk_pool: balanced
+    label: 双期限截面动量＋绝对动量过滤
+    operation: dual_momentum
+    mode: fixed
+    execution:
+      trade_mode: fixed
+      rebalance_days: 20
+      min_trade_interval_days: 5
+      stop_loss_pct: 5
+      take_profit_pct: 20
+      trailing_stop_pct: 0
+      risk_cooldown_days: 10
+  dual_momentum_skip:
+    average: sma
+    fast: 20
+    slow: 60
+    confirm_days: 2
+    momentum_periods:
+    - 63
+    - 126
+    absolute_period: 63
+    skip_days: 21
+    score: momentum
+    risk_pool: balanced
+    label: 双期限截面动量跳过近21日
+    operation: dual_momentum
+    mode: fixed
+    execution:
+      trade_mode: fixed
+      rebalance_days: 20
+      min_trade_interval_days: 5
+      stop_loss_pct: 5
+      take_profit_pct: 20
+      trailing_stop_pct: 0
+      risk_cooldown_days: 10
+  ma20_60:
+    average: sma
+    fast: 20
+    slow: 60
+    confirm_days: 2
+    momentum_periods:
+    - 63
+    - 126
+    absolute_period: 63
+    skip_days: 0
+    score: momentum
+    risk_pool: balanced
+    label: MA20/60趋势＋止损止盈
+    operation: ma_trend
+    mode: event
+    execution:
+      trade_mode: event
+      rebalance_days: 20
+      min_trade_interval_days: 5
+      stop_loss_pct: 5
+      take_profit_pct: 20
+      trailing_stop_pct: 0
+      risk_cooldown_days: 10
+  ma20_120:
+    average: sma
+    fast: 20
+    slow: 120
+    confirm_days: 2
+    momentum_periods:
+    - 63
+    - 126
+    absolute_period: 63
+    skip_days: 0
+    score: momentum
+    risk_pool: balanced
+    label: MA20/120长趋势＋止损止盈
+    operation: ma_trend
+    mode: event
+    execution:
+      trade_mode: event
+      rebalance_days: 20
+      min_trade_interval_days: 5
+      stop_loss_pct: 5
+      take_profit_pct: 20
+      trailing_stop_pct: 0
+      risk_cooldown_days: 10
+  ema20_60_trailing:
+    average: ema
+    fast: 20
+    slow: 60
+    confirm_days: 2
+    momentum_periods:
+    - 63
+    - 126
+    absolute_period: 63
+    skip_days: 0
+    score: momentum
+    risk_pool: balanced
+    label: EMA20/60趋势＋移动止盈
+    operation: ma_trend
+    mode: event
+    execution:
+      trade_mode: event
+      rebalance_days: 20
+      min_trade_interval_days: 5
+      stop_loss_pct: 5
+      take_profit_pct: 0
+      trailing_stop_pct: 8
+      risk_cooldown_days: 10
+  ma60_pullback:
+    average: sma
+    fast: 20
+    slow: 60
+    confirm_days: 2
+    momentum_periods:
+    - 63
+    - 126
+    absolute_period: 63
+    skip_days: 0
+    score: defensive
+    risk_pool: balanced
+    min_price_vs_slow: -0.01
+    max_price_vs_slow: 0.05
+    slope_days: 10
+    min_slope: 0.0
+    score_factors:
+    - lowvol_60
+    - turn_20d
+    label: MA60温和回踩＋低波低换手
+    operation: ma_pullback
+    mode: event
+    execution:
+      trade_mode: event
+      rebalance_days: 20
+      min_trade_interval_days: 5
+      stop_loss_pct: 5
+      take_profit_pct: 20
+      trailing_stop_pct: 0
+      risk_cooldown_days: 10
+design_note: 技术策略不要求固定年化。先按发现期风险和换手筛选，每类预设两档仓位，共12个候选，不在验证期选参数。强风险次日清仓例外；个股止损止盈仍遵守至少5交易日间隔。

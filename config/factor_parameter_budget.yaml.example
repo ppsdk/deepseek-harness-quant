@@ -1,0 +1,8 @@
+source_config: factor_parameter_research
+output_dir: output/strategy_research/factor_parameter_budget_v1
+drawdown_headroom: 0.8
+turnover_headroom: 0.8
+exposure_step_pct: 5
+minimum_exposure_pct: 10
+maximum_exposure_pct: 100
+proposal_after_source_validation_observed: true

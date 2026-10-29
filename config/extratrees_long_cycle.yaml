@@ -1,0 +1,314 @@
+as_of: '2026-10-28'
+base_config: mainboard_repair_v3
+valuation_config: four_axis_factor_mining
+output_dir: output/strategy_research/extratrees_long_cycle_v1
+rounds:
+- id: round_train_2020
+  discovery:
+    start: '2019-01-01'
+    end: '2020-12-31'
+  inner_training_end: '2020-12-31'
+  selection:
+    start: '2020-01-01'
+    end: '2020-12-31'
+  validation:
+    start: '2021-01-01'
+    end: '2021-12-31'
+- id: round_train_2021
+  discovery:
+    start: '2019-01-01'
+    end: '2021-12-31'
+  inner_training_end: '2021-12-31'
+  selection:
+    start: '2021-01-01'
+    end: '2021-12-31'
+  validation:
+    start: '2022-01-01'
+    end: '2022-12-31'
+- id: round_train_2022
+  discovery:
+    start: '2019-01-01'
+    end: '2022-12-31'
+  inner_training_end: '2022-12-31'
+  selection:
+    start: '2022-01-01'
+    end: '2022-12-31'
+  validation:
+    start: '2023-01-01'
+    end: '2023-12-31'
+- id: round_train_2023
+  discovery:
+    start: '2019-01-01'
+    end: '2023-12-31'
+  inner_training_end: '2023-12-31'
+  selection:
+    start: '2023-01-01'
+    end: '2023-12-31'
+  validation:
+    start: '2024-01-01'
+    end: '2024-12-31'
+- id: round_train_2024
+  discovery:
+    start: '2019-01-01'
+    end: '2024-12-31'
+  inner_training_end: '2024-12-31'
+  selection:
+    start: '2024-01-01'
+    end: '2024-12-31'
+  validation:
+    start: '2025-01-01'
+    end: '2025-12-31'
+- id: round_train_2025
+  discovery:
+    start: '2019-01-01'
+    end: '2025-12-31'
+  inner_training_end: '2025-12-31'
+  selection:
+    start: '2025-01-01'
+    end: '2025-12-31'
+  validation:
+    start: '2026-01-01'
+    end: '2026-10-23'
+observation:
+  start: '2026-01-01'
+  end: '2026-10-23'
+execution:
+  initial_capital: 1000000
+  topn: 10
+  max_position_pct: 10
+  max_traded_codes_per_day: 20
+  min_trade_interval_days: 5
+  trade_mode: fixed
+  allocation: equal
+  commission_bps: 3
+  min_commission: 5
+  stamp_tax_bps: 10
+  slippage_bps: 10
+  rebalance_threshold_pct: 2
+  target_exposure_pct: 100
+  timing_index: 000300.SH
+  timing_execution: daily_exit
+  risk_cooldown_days: 5
+  stop_loss_pct: 0
+  take_profit_pct: 0
+  trailing_stop_pct: 0
+  max_holding_days: 0
+selection_policy:
+  retain_rank: 15
+  replacement_score_margin: 0.03
+cadences:
+- 5
+timing_modes:
+- ma_gate
+timing:
+  fast: 20
+  slow: 60
+  risk_period: 120
+  drawdown_period: 60
+  strong_risk_drawdown: -0.12
+  breadth_period: 60
+  trend_breadth: 0.55
+  confirm_days: 2
+stress:
+  commission_bps: 5
+  slippage_bps: 30
+  stamp_tax_bps: 10
+research_preferences:
+  drawdown_reference: -0.3
+  annual_turnover_reference: 20
+  min_average_exposure: 0.15
+  min_trade_dates: 4
+  annual_return_reference: 0.2
+  note: 30%回撤和20倍换手仅用于研究排序与报告，不是用户确认的新硬门槛。
+preprocessing:
+  scaling: standard
+  correlation_filter: greedy
+  max_abs_correlation: 0.5
+  min_features: 2
+  reduction: pca
+  component_mode: variance
+  variance_ratio: 0.9
+  max_training_samples: 80000
+  seed: 42
+features:
+  momentum_short:
+    operation: momentum
+    params:
+      n: 20
+      skip: 0
+  momentum_medium:
+    operation: momentum
+    params:
+      n: 120
+      skip: 20
+  reversal:
+    operation: momentum
+    params:
+      n: 5
+      skip: 0
+    sign: -1
+  low_volatility:
+    operation: volatility
+    params:
+      n: 60
+    sign: -1
+  downside_risk:
+    operation: downside
+    params:
+      n: 20
+    sign: -1
+  liquidity:
+    operation: amount
+    params:
+      n: 20
+  money_flow:
+    operation: money_flow
+    params:
+      n: 20
+  trend_efficiency:
+    operation: efficiency
+    params:
+      n: 60
+  price_location:
+    operation: price_location
+    params:
+      n: 60
+    sign: -1
+  volume_surprise:
+    operation: volume_ratio
+    params:
+      n: 20
+    sign: -1
+  earnings_yield:
+    operation: valuation_yield
+    params:
+      field: pe
+  book_yield:
+    operation: valuation_yield
+    params:
+      field: pb
+  cashflow_yield:
+    operation: valuation_yield
+    params:
+      field: pcf
+  sales_yield:
+    operation: valuation_yield
+    params:
+      field: ps
+  profitability_proxy:
+    operation: valuation_ratio
+    params:
+      numerator: pb
+      denominator: pe
+technical_features:
+- momentum_short
+- momentum_medium
+- reversal
+- low_volatility
+- downside_risk
+- liquidity
+- money_flow
+- trend_efficiency
+- price_location
+- volume_surprise
+valuation_features:
+- earnings_yield
+- book_yield
+- cashflow_yield
+- sales_yield
+- profitability_proxy
+blends:
+  balanced:
+    label: 动量反转低波多因子
+    offensive:
+      momentum_medium: 0.35
+      money_flow: 0.2
+      trend_efficiency: 0.15
+      reversal: 0.15
+      liquidity: 0.15
+    defensive:
+      low_volatility: 0.4
+      reversal: 0.25
+      price_location: 0.2
+      liquidity: 0.15
+  trend:
+    label: 长动量趋势与低波防御切换
+    offensive:
+      momentum_medium: 0.45
+      momentum_short: 0.2
+      trend_efficiency: 0.2
+      liquidity: 0.15
+    defensive:
+      low_volatility: 0.5
+      price_location: 0.3
+      money_flow: 0.2
+  reversal:
+    label: 短期反转与资金流多因子
+    offensive:
+      reversal: 0.4
+      money_flow: 0.25
+      low_volatility: 0.2
+      liquidity: 0.15
+    defensive:
+      low_volatility: 0.45
+      reversal: 0.3
+      liquidity: 0.25
+  value:
+    label: 估值现金流收益率与趋势
+    offensive:
+      earnings_yield: 0.25
+      book_yield: 0.2
+      cashflow_yield: 0.2
+      momentum_medium: 0.2
+      money_flow: 0.15
+    defensive:
+      book_yield: 0.3
+      earnings_yield: 0.2
+      low_volatility: 0.3
+      reversal: 0.2
+routes:
+  matched_ml:
+    label: ExtraTrees长周期固定与年度滚动
+    scope: valuation_sample
+    models:
+    - extra_trees
+models:
+  ridge:
+    alpha: 100.0
+  extra_trees:
+    n_estimators: 80
+    max_depth: 6
+    min_samples_leaf: 100
+    n_jobs: 2
+  hist_gradient_boosting:
+    max_iter: 80
+    max_leaf_nodes: 15
+    learning_rate: 0.05
+    min_samples_leaf: 100
+    early_stopping: false
+ml:
+  horizon: 20
+  sample_every_days: 5
+  candidate_cadences:
+  - 5
+  min_training_rows: 1000
+  target: cross_sectional_forward_open_return_rank
+  defensive_weights:
+    low_volatility: 0.5
+    reversal: 0.3
+    liquidity: 0.2
+graph:
+  window: 120
+  min_observations: 80
+  update_days: 20
+  neighbors: 8
+  min_correlation: 0.2
+  features:
+  - momentum_short
+  - momentum_medium
+  - reversal
+  min_available_weight: 0.5
+design_note: ExtraTrees参数、MA20/60门控和5交易日调仓沿用先前研究，不按2021—2026收益重新选参。规则由后期研究确定，新增早期区间为事后历史滚动诊断；固定模型与逐年扩展训练必须分开解释。股票数据2019起，2017—2018不得充当股票回测。
+source_research_dir: output/strategy_research/multiroute_v1
+first_prediction_year: 2021
+last_prediction_year: 2026

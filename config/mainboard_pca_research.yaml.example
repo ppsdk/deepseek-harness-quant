@@ -1,0 +1,22 @@
+base_config: mainboard_repair_v3
+output_dir: output/strategy_research/mainboard_pca_v1
+features: [lowvol_60, turn_20d, intraday_range_20, research_gap_risk, downside_realized_vol_20, price_pressure_20, bias_60, max_daily_return_20]
+normalization: rank
+risk_pool: balanced
+entry_rule: ma20_repair
+horizon: 20
+max_training_samples: 100000
+alpha: 10.0
+arms:
+  normalized_ridge: {scaling: standard, reduction: none}
+  normalized_pca_ridge: {scaling: standard, reduction: pca, component_mode: variance, variance_ratio: 0.90}
+execution_variant:
+  id: frozen_ten_day_event
+  label: 固定发现期模型，至少十日均线事件八成仓
+  trade_mode: event
+  rebalance_days: 10
+  min_trade_interval_days: 10
+  max_traded_codes_per_day: 5
+  topn: 5
+  target_exposure_pct: 80
+  selection_policy: stable_diverse

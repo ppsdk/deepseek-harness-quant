@@ -5,6 +5,7 @@
 <title>量化研究工作台 · DSHQuant</title>
 <link rel="stylesheet" href="/v2/assets/ui_common.css">
 <link rel="stylesheet" href="/v2/assets/app.css"><link rel="stylesheet" href="/v2/assets/studio.css">
+<link rel="stylesheet" href="/v2/assets/chart_controls.css">
 <style>
  .research-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px;margin-top:16px}
  .research-form{display:flex;gap:12px;flex-wrap:wrap;align-items:end;margin:12px 0}
@@ -43,19 +44,16 @@
    </div>
   </section>
  </div>
- <section class="v2-card" style="margin-top:16px">
+ <section class="v2-card" style="margin-top:16px" id="stock-quotes">
   <h2>个股行情 <span class="tag">K线与技术指标</span></h2>
   <div class="research-form">
    <label for="chart-code">股票代码<input id="chart-code" placeholder="完整代码，如 000001.SZ"></label>
    <label for="chart-start">起始日期<input id="chart-start" type="date"></label>
    <label for="chart-end">结束日期<input id="chart-end" type="date"></label>
    <label for="chart-timeframe">K线周期<select id="chart-timeframe"></select></label>
-   <label for="chart-preset">图表组合<select id="chart-preset"><option value="">读取配置…</option></select></label>
    <button class="v2-btn" id="chart-load" disabled>查看行情</button>
   </div>
-  <div id="chart-indicators" class="indicator-picks" aria-label="图表指标"></div><p class="status-note" id="chart-guide"></p>
-  <div id="chart-indicator-settings"></div>
-  <div id="chart-overlays"></div>
+  <section class="chart-config" id="chart-config" aria-label="指标配置"></section>
   <p class="status-note" id="chart-note">点击选股结果中的“行情”查看该股，或输入已下载的代码。价格已按分红、拆股调整，方便比较前后变化。</p>
   <div class="chart-wrap" id="stock-chart"></div>
  </section>
@@ -68,46 +66,49 @@
 <script src="/v2/core/api.js"></script><script src="/v2/core/render.js"></script>
 <script src="/v2/components/indicator_editor.js"></script><script src="/v2/components/research_chart.js"></script><script src="/v2/components/icons.js"></script><script src="/v2/components/search.js"></script><script src="/v2/components/sidebar.js"></script>
 <script src="/v2/components/overlay_editor.js"></script><script src="/v2/components/stock_profile.js"></script>
+<script src="/v2/components/chart_controls.js"></script>
 <script src="/v2/components/research_dashboard.js"></script>
 <script>
 (function () {
  'use strict';
  LW.sidebar.render('sidebar', {active:'research'});
- var cfg, chartSequence = 0, chartIndicatorEditor, chartOverlayEditor;
+ var cfg, chartSequence = 0, chartControls;
  var $ = function(id){return document.getElementById(id);};
  function esc(s){return String(s == null ? '' : s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
  function loadConfig(){
-  return LW.api.get('/api/research/config',{bypass:true}).then(function(data){
+  return LW.api.get('/api/research/config',{bypass:true}).then(async function(data){
    cfg=data;
    $('research-workflow').innerHTML=(cfg.workflow_steps||[]).map(function(s,i){return '<a href="'+esc(s.url)+'">'+(i+1)+'. '+esc(s.label)+'<small>'+esc(s.description)+'</small></a>';}).join('');
-   $('chart-indicators').innerHTML=Object.keys(cfg.factor_catalog).filter(function(id){return cfg.factor_catalog[id].chart;}).map(function(id){return '<label><input type="checkbox" value="'+esc(id)+'"> '+esc(cfg.factor_catalog[id].label)+'</label>';}).join('');
    var chartPrefs={};try{chartPrefs=JSON.parse(localStorage.getItem('research.chart.prefs')||'{}');}catch(e){}
    var chartQuery=new URLSearchParams(location.search);
    if(chartQuery.has('indicators'))chartPrefs.indicators=chartQuery.get('indicators').split(',');
    if(chartQuery.has('indicator_params')){try{chartPrefs.indicator_params=JSON.parse(chartQuery.get('indicator_params'));}catch(e){chartPrefs.indicator_params={};}}
+   var code=chartQuery.get('code');
+   if(code&&chartQuery.get('run')&&!chartQuery.has('indicator_params')){
+    var archived=await LW.api.get('/api/studio/experiments?id='+encodeURIComponent(chartQuery.get('run')));
+    chartPrefs.indicator_params=archived.params.indicator_params||{};
+   }
    $('chart-timeframe').innerHTML=Object.keys(cfg.chart_settings.timeframes).map(function(k){return '<option value="'+esc(k)+'">'+esc(cfg.chart_settings.timeframes[k].label)+'</option>';}).join('');
    $('chart-timeframe').value=cfg.chart_settings.timeframes[chartPrefs.timeframe]?chartPrefs.timeframe:cfg.chart_settings.default_timeframe;
-   $('chart-preset').innerHTML='<option value="">自选指标</option>'+Object.keys(cfg.chart_settings.pattern_presets||{}).map(function(k){return '<option value="'+esc(k)+'">'+esc(cfg.chart_settings.pattern_presets[k].label)+'</option>';}).join('');
-   $('chart-indicators').querySelectorAll('input').forEach(function(i){i.checked=(chartPrefs.indicators||cfg.chart_settings.default_indicators).includes(i.value);});
-   chartIndicatorEditor=LW.indicatorEditor.mount('chart-indicator-settings',cfg,chartPrefs.indicators||cfg.chart_settings.default_indicators,chartPrefs.indicator_params||{},function(){if($('chart-code').value)loadChart();});
    var incomingOverlays=null;if(chartQuery.has('overlays')){try{incomingOverlays=JSON.parse(chartQuery.get('overlays'));}catch(e){}}
-   chartOverlayEditor=LW.overlayEditor.mount('chart-overlays',cfg,incomingOverlays||chartPrefs.overlays||[],function(){if($('chart-code').value)loadChart();});
-   $('chart-guide').textContent='可直接选择图表组合，也可逐项勾选。最多选择'+cfg.chart_settings.max_indicators+'项。';
+   chartPrefs.overlays=incomingOverlays||chartPrefs.overlays||[];
+   chartControls=LW.chartControls.mount($('chart-config'),cfg,chartPrefs,function(){if($('chart-code').value)loadChart();});
    $('chart-start').value=cfg.parameters.start.default;$('chart-end').value=cfg.parameters.end.default;
    $('chart-load').disabled=false;
-   var code=chartQuery.get('code');if(code){$('chart-code').value=code;if(chartQuery.get('run')&&!chartQuery.has('indicator_params')){LW.api.get('/api/studio/experiments?id='+encodeURIComponent(chartQuery.get('run'))).then(function(r){chartIndicatorEditor.setFactors(Array.from($('chart-indicators').querySelectorAll('input:checked')).map(function(i){return i.value;}),r.params.indicator_params||{});loadChart();}).catch(function(e){$('chart-note').textContent=e.message;});}else loadChart();}
+   if(code){$('chart-code').value=code;loadChart();}
   });
  }
  function drawChart(data){
-  LW.chart.render($('stock-chart'),data,{maxBars:cfg.chart_max_bars});
+  LW.chart.render($('stock-chart'),chartControls.decorate(data),{maxBars:cfg.chart_max_bars});
   if(data.profile)LW.stockProfile&&LW.stockProfile.render($('stock-profile-body'),data.profile);
+  $('chart-note').textContent=data.message||'行情与指标已加载。';
   $('stock-chart').scrollIntoView({behavior:'smooth',block:'center'});
  }
  function loadChart(){
-  var seq=++chartSequence,indicators=Array.from($('chart-indicators').querySelectorAll('input:checked')).map(function(i){return i.value;});
+  var seq=++chartSequence,indicators=chartControls.getIndicators();
   if(indicators.length>cfg.chart_settings.max_indicators){$('chart-note').textContent='最多选择'+cfg.chart_settings.max_indicators+'项指标，请取消几项后重试。';return;}
-  var indicatorParams=chartIndicatorEditor?chartIndicatorEditor.get():{};
-  var overlays=chartOverlayEditor?chartOverlayEditor.get():[];
+  var indicatorParams=chartControls.getParams();
+  var overlays=chartControls.getOverlays();
   try{localStorage.setItem('research.chart.prefs',JSON.stringify({indicators:indicators,timeframe:$('chart-timeframe').value,indicator_params:indicatorParams,overlays:overlays}));}catch(e){}
   var query=new URLSearchParams({code:$('chart-code').value.trim(),start:$('chart-start').value,end:$('chart-end').value,timeframe:$('chart-timeframe').value,indicators:indicators.join(',')});
   query.set('indicator_params',JSON.stringify(indicatorParams));
@@ -117,10 +118,8 @@
   LW.api.get('/api/research/chart?'+query.toString()).then(function(r){if(seq===chartSequence)drawChart(r);}).catch(function(e){if(seq===chartSequence)$('chart-note').textContent='行情读取失败：'+e.message;});
  }
  $('chart-load').onclick=loadChart;
- $('chart-preset').onchange=function(){var preset=cfg.chart_settings.pattern_presets[this.value];if(!preset)return;$('chart-indicators').querySelectorAll('input').forEach(function(i){i.checked=preset.indicators.includes(i.value);});if($('chart-code').value)loadChart();};
  $('chart-timeframe').onchange=function(){if($('chart-code').value)loadChart();};
  LW.search.attach($('chart-code'),{onSelect:function(stock){$('chart-code').value=stock.code;loadChart();}});
- $('chart-indicators').onchange=function(){if($('chart-code').value)loadChart();};
  function refreshData(){LW.api.get('/api/data/akshare',{bypass:true}).then(function(d){
   $('research-data').textContent='AKShare 数据状态：'+(d.state_label || '未知')+' · 已完成 '+(d.completed || 0)+' / '+(d.requested_stocks || 0)+' 只 · 成功 '+(d.successful || 0)+' · 失败 '+(d.failed || 0)+'。研究只使用本地缓存，可在下载期间运行。';
  }).catch(function(e){$('research-data').textContent='数据状态读取失败：'+e.message;});}

@@ -79,11 +79,13 @@ def check(payload):
     from backtest.research_pools import get_pool
     pool=get_pool(plan['pool_id'])
     start=max(start,pool.get('signal_date') or start)
+    if pool.get('signal_date') and end<pool['signal_date']:raise ValueError('检查日期不能早于候选名单确定日。')
     # Checks include the list's creation day; backtests separately require the following day.
     p=validate_params(dict(strategy=cfg['default_strategy'],codes=','.join(pool['codes']),stocks=pool['count'],
                    topn=min(pool['count'],cfg['parameters']['topn']['max']),start=start,end=end),cfg)
     p['signal_plan_id']=plan['id']
     panels,data=load_panels(p,cfg);names=_names();dates=panels['close'].index;calendar,origin=local_calendar(start,end)
+    if not len(dates):raise ValueError('候选名单在此日期之前没有可读行情，请先更新数据或调整日期。')
     asof=calendar[-1] if calendar else dates[-1];rows=[];events=[];labels=read_config('research_workflow')['signals']['states']
     for code in pool['codes']:
         available=panels['close'][code].dropna();day=available.index[-1] if len(available) else None
@@ -98,6 +100,18 @@ def check(payload):
             if np.isfinite(a) and np.isfinite(b) and (a>0 or b>0):events.append(dict(code=code,date=day,entry=bool(a>0),exit=bool(b>0)))
     return dict(ok=True,plan=plan,start=start,asof=asof,calendar_source=origin,rows=rows,events=events,
                 message='收盘条件为正表示触发；等待、数据不足和行情过旧分别显示。退出条件仅供已有持仓参考；信号不等于成交。')
+
+
+def create_candidates(payload):
+    """Reuse the shared strategy ranking; this does not create buy instructions."""
+    from backtest.research_workspace import screen
+    from backtest.research_pools import save_pool
+    values=dict(payload);name=values.pop('pool_name','').strip()
+    if not name:raise ValueError('请填写候选名单名称。')
+    result=screen(values)
+    if not result['candidates']:raise ValueError('本次没有满足策略和数据条件的股票，未保存空名单。')
+    pool=save_pool(dict(name=name,codes=[r['code'] for r in result['candidates']],signal_date=result['signal_date'],source_strategy=result['strategy'],source_params=result['params']))
+    return dict(ok=True,pool=pool,screen=result,message='已按共享策略评分保存 '+str(pool['count'])+' 只候选；名单确定日 '+pool['signal_date']+'。')
 
 
 def signal_chart(query):

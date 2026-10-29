@@ -1,0 +1,61 @@
+as_of: '2026-10-28'
+base_config: four_axis_factor_mining
+execution_config: mainboard_repair_v3
+output_dir: output/strategy_research/factor_parameter_v1
+search:
+  periods: [5, 10, 20, 40, 60, 120]
+  relative_valuation_periods: [60, 120, 252, 504]
+  smoothing_periods: [1, 5, 20, 60]
+  overrides:
+    liquidity_turn_accel:
+      parameter: m
+      values: [10, 20, 40, 60, 120]
+    volatility_volvol:
+      parameter: n
+      values: [5, 10, 20, 40]
+  parameters_per_family: 3
+  finalists_per_category: 1
+  min_neighbor_fraction: 0.5
+  min_same_direction_neighbors: 1
+  min_abs_rank_ic: 0.02
+  fdr: 0.1
+  min_year_stability: 0.6
+  min_coverage: 0.5
+  min_observations: 100
+  primary_horizon: 20
+  robust_quantile: 0.25
+rounds:
+- id: round_1
+  discovery: {start: '2019-01-01', end: '2022-12-31'}
+  validation: {start: '2023-01-01', end: '2024-12-31'}
+- id: round_2
+  discovery: {start: '2019-01-01', end: '2024-12-31'}
+  validation: {start: '2025-01-01', end: '2025-12-31'}
+observation: {start: '2026-01-01', end: '2026-10-23'}
+portfolio:
+  top_counts: [5, 10]
+  rebalance_days: [5, 20]
+  timing_rules: [none, recovery_slope_confirm]
+  primary_topn: 5
+  diagnostic_topn: 10
+  target_exposure_pct: 100
+  max_traded_codes_per_day: 5
+  min_trade_interval_days: 5
+  max_annual_one_way_turnover: 3.0
+  max_drawdown: -0.1
+  min_average_exposure: 0.1
+  min_trade_dates: 4
+  min_conclusion_days: 252
+  candidate_buffer: 1.5
+  commission_bps: 3
+  stamp_tax_bps: 10
+  slippage_bps: 10
+stress:
+  commission_bps: 5
+  stamp_tax_bps: 10
+  slippage_bps: 20
+preprocessing:
+  max_abs_correlation: 0.5
+  pca_explained_variance: 0.9
+  max_samples: 50000
+  sample_every_days: 5

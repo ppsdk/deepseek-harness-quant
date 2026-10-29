@@ -1,0 +1,60 @@
+# v3 因子筛选：仅使用发现期标签；验证期不参与方向与稳定性判断。
+as_of: '2026-10-27'
+snapshot_dir: output/strategy_research/mainboard_low_turnover
+output_dir: output/strategy_research/mainboard_repair_v3_explore/factor_scan
+data_start: '2017-11-01'
+data_end: '2026-10-23'
+execution:
+  timing_index: 000300.SH
+universe:
+  code_pattern: '^(60[0135]\d{3}\.SH|00[0-3]\d{3}\.SZ)$'
+  min_history_days: 60
+  liquidity_window: 20
+  min_average_amount: 20000000
+  exclude_st: true
+research_windows:
+  round_1_discovery: {start: '2019-01-01', end: '2022-12-31'}
+  round_2_discovery: {start: '2023-01-01', end: '2024-12-31'}
+ic:
+  horizons: [5, 10, 20]
+  min_stocks: 50
+  sample_every_days: 5
+  annual_periods: 252
+factors:
+  - price_percentile_60
+  - drawdown_60
+  - price_vs_high_60
+  - clv_20
+  - o2c_20
+  - obv_momentum_20
+  - cmf_20
+  - mfi_14
+  - turnover_shrink_20
+  - turnover_acceleration_5
+  - amihud_illiquidity_20
+  - turn_volatility_60
+  - lowvol_60
+  - downside_realized_vol_20
+  - max_daily_return_20
+  - research_gap_risk
+  - intraday_range_20
+  - turn_20d
+  - roc_20
+  - roc_60
+  - bias_20
+  - bias_60
+  - adx_14
+  - research_trend_efficiency
+  - price_pressure_20
+  - overnight_gap_20
+  - return_skew_20
+  - volatility_20
+  - momentum_3m
+  - momentum_6m
+selection:
+  primary_horizon: 20
+  minimum_coverage: 0.50
+  minimum_abs_rank_ic: 0.015
+  minimum_direction_years: 0.60
+  stability_minimum_abs_rank_ic: 0.015
+  stability_minimum_direction_years: 0.60

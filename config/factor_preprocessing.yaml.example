@@ -1,0 +1,41 @@
+defaults:
+  normalization: rank
+  scaling: none
+  reduction: none
+  component_mode: variance
+  n_components: 3
+  variance_ratio: 0.90
+  correlation_filter: none
+  max_abs_correlation: 0.50
+  min_features: 3
+selector_fields:
+  normalization: {label: 截面归一化}
+  scaling: {label: 训练期缩放}
+  reduction: {label: 降维}
+  component_mode: {label: PCA 维数设置}
+  correlation_filter: {label: PCA 前相关性去冗余}
+correlation_filter:
+  none: {label: 不筛选相关性}
+  greedy: {label: 训练期按因子顺序剔除高相关项}
+normalization:
+  rank: {label: 每日截面排名}
+  zscore: {label: 每日截面 Z-score}
+  minmax: {label: 每日截面 Min-Max}
+  none: {label: 保留原始因子}
+scaling:
+  none: {label: 不额外缩放}
+  standard: {label: 训练期 StandardScaler}
+  minmax: {label: 训练期 MinMaxScaler}
+  robust: {label: 训练期 RobustScaler}
+reduction:
+  none: {label: 不降维}
+  pca: {label: PCA 主成分分析}
+component_modes:
+  variance: {label: 按累计解释方差保留}
+  count: {label: 指定主成分数量}
+numeric_fields:
+  n_components: {label: PCA 主成分数量, min: 1, max: 40, step: 1}
+  variance_ratio: {label: PCA 累计解释方差比例, min: 0.90, max: 0.9999, step: 0.01}
+  max_abs_correlation: {label: 因子最大绝对相关系数, min: 0.01, max: 0.99, step: 0.01}
+  min_features: {label: 去冗余后最少因子数, min: 2, max: 40, step: 1}
+note: 相关性筛选、缩放器与 PCA 仅在训练期拟合，验证期只转换。相关性为归一化输入的Pearson绝对值，按配置因子顺序优先保留。90%解释方差针对去冗余后保留的因子，不代表原候选全集或收益解释率。

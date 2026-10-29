@@ -31,6 +31,13 @@ def calculate(spec, p):
     op, a = spec['operation'], spec.get('params', {})
     c = p['close'].astype(float)
     n = int(a.get('n', 20))
+    if op.startswith('axis_'):
+        from factors.research_axis import calculate as axis_calculate
+        return axis_calculate(dict(spec,operation=op[5:]),p)
+    if op == 'research_trend_efficiency':
+        return divide(c - c.shift(n), c.diff().abs().rolling(n).sum())
+    if op == 'research_gap_risk':
+        return (divide(p['open'], c.shift(1)) - 1).abs().rolling(n).mean()
     if op == 'return_roc': return c.pct_change(n, fill_method=None)
     if op == 'return_volatility': return c.pct_change(fill_method=None).rolling(n).std()
     if op == 'turn_mean': return p['turn'].rolling(n).mean()

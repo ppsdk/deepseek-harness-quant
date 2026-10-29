@@ -112,18 +112,23 @@ def analyse(payload):
     panels,data=load_panels(p,cfg);preprocessing=payload.get('preprocessing','none');raw=clean(raw_factor(key,panels),preprocessing,policy)
     # Buy next open, measure until the open after h trading intervals. No same-close fills.
     future=future_returns(panels,horizon)
-    ranks=raw.rank(axis=1,pct=True);ics=[];group_values={g:[] for g in range(1,groups+1)};coverage=[]
+    ranks=raw.rank(axis=1,pct=True);ics=[];group_values={g:[] for g in range(1,groups+1)};coverage=[];group_spreads=[];sample_stocks=[]
     for day in raw.index[(raw.index>=p['start'])&(raw.index<=p['end'])]:
         pair=pd.DataFrame({'factor':raw.loc[day],'future':future.loc[day]}).dropna()
         coverage.append(float(raw.loc[day].notna().mean()))
         if len(pair)<policy['min_stocks'] or pair.factor.nunique()<2:continue
         ic=pair.factor.rank().corr(pair.future.rank())
-        if pd.notna(ic):ics.append({'date':day,'value':float(ic),'stocks':len(pair)})
+        if pd.notna(ic):
+            ics.append({'date':day,'value':float(ic),'stocks':len(pair)})
+            sample_stocks.append(len(pair))
         # Equal factor values stay in the same group; no arbitrary code-based tie split.
         bins=np.ceil(pair.factor.rank(pct=True,method='average')*groups).clip(1,groups)
+        day_groups={}
         for g in group_values:
             vals=pair.future[bins==g]
-            if len(vals):group_values[g].append(float(vals.mean()))
+            if len(vals):
+                value=float(vals.mean());group_values[g].append(value);day_groups[g]=value
+        if 1 in day_groups and groups in day_groups:group_spreads.append(day_groups[groups]-day_groups[1])
     series=pd.Series([r['value'] for r in ics],dtype=float)
     result=dict(ok=True,run_id=uuid4().hex,factor=key,label=cfg['factor_catalog'][key]['label'],factor_spec=cfg['factor_catalog'][key],
                 generated_at=time.strftime('%Y-%m-%d %H:%M:%S'),horizon=horizon,params=p,data=data,
@@ -133,8 +138,21 @@ def analyse(payload):
                 warnings=['这里检查因子排序与以后涨跌是否相关，不是完整交易回测；分组收益没有扣费用。',
                           '持有区间可能重叠，样本之间并不独立；没有据此计算显著性或宣称有效。',
                           '仅使用已经下载的股票，可能遗漏历史退市股票；缺值不补造。'])
+    ic_std=float(series.std()) if len(series)>1 else None
+    spread_series=pd.Series(group_spreads,dtype=float)
+    all_group_values=[x for values in group_values.values() for x in values]
     result.update(diagnostics(raw,panels,p['start'],p['end'],policy),preprocessing=preprocessing,
-                  ic_ir=float(series.mean()/series.std()) if len(series)>1 and series.std()>0 else None)
+                  ic_ir=float(series.mean()/ic_std) if len(series)>1 and ic_std and ic_std>0 else None,
+                  ic_positive_rate=float((series>0).mean()) if len(series) else None,
+                  ic_tstat=float(series.mean()/(ic_std/np.sqrt(len(series)))) if len(series)>1 and ic_std and ic_std>0 else None,
+                  group_spread=float(spread_series.mean()) if len(spread_series) else None,
+                  long_short_spread=float(spread_series.mean()) if len(spread_series) else None,
+                  group_spread_days=len(spread_series),
+                  mean_forward_return=float(np.mean(all_group_values)) if all_group_values else None,
+                  best_group=max(group_values,key=lambda g: np.mean(group_values[g]) if group_values[g] else -np.inf) if all_group_values else None,
+                  worst_group=min(group_values,key=lambda g: np.mean(group_values[g]) if group_values[g] else np.inf) if all_group_values else None,
+                  sample_stocks_mean=float(np.mean(sample_stocks)) if sample_stocks else None,
+                  sample_stocks_min=int(min(sample_stocks)) if sample_stocks else None)
     result['warnings'].append('ICIR为相关系数均值除以样本标准差，未年化；自相关表示不同日期横截面排序的延续，不是显著性证明。预处理只用当天股票数据；未做行业或市值中性化。')
     from factors.research_controls import dependencies
     from factors.research_library import factor_definitions
@@ -190,7 +208,7 @@ def analysis_records(query):
     for path in ANALYSES.glob('*.json'):
         try:
             data=json.loads(path.read_text(encoding='utf-8'))
-            record={k:data.get(k) for k in ('run_id','factor','label','generated_at','horizon','ic_mean','evaluated_days','coverage','params')}
+            record={k:data.get(k) for k in ('run_id','factor','label','generated_at','horizon','ic_mean','ic_ir','ic_positive_rate','long_short_spread','evaluated_days','coverage','sample_stocks_mean','params')}
             if query.get('q','').lower() in json.dumps(record,ensure_ascii=False).lower():records.append(record)
         except (ValueError,OSError):continue
     return dict(ok=True,analyses=sorted(records,key=lambda r:r.get('generated_at',''),reverse=True))

@@ -1,0 +1,57 @@
+base_config: mainboard_repair_v3
+output_dir: output/strategy_research/mainboard_lowcorr_pca_v1
+features:
+- intraday_range_20
+- price_pressure_20
+- volatility_20
+- lowvol_60
+- max_daily_return_20
+- turn_20d
+- research_gap_risk
+- o2c_20
+- turn_volatility_60
+- bias_60
+- downside_realized_vol_20
+- roc_20
+- roc_60
+- bias_20
+- research_trend_efficiency
+- price_percentile_60
+- obv_momentum_20
+- mfi_14
+- turnover_acceleration_5
+- return_skew_20
+- cmf_20
+- turnover_shrink_20
+normalization: rank
+risk_pool: balanced
+entry_rule: ma20_repair
+horizon: 20
+max_training_samples: 100000
+alpha: 10.0
+arms:
+  lowcorr_ridge:
+    scaling: standard
+    correlation_filter: greedy
+    max_abs_correlation: 0.5
+    min_features: 3
+    reduction: none
+  lowcorr_pca_ridge:
+    scaling: standard
+    correlation_filter: greedy
+    max_abs_correlation: 0.5
+    min_features: 3
+    reduction: pca
+    component_mode: variance
+    variance_ratio: 0.9
+execution_variant:
+  id: frozen_ten_day_event
+  label: 固定发现期模型，至少十日均线事件八成仓
+  trade_mode: event
+  rebalance_days: 10
+  min_trade_interval_days: 10
+  max_traded_codes_per_day: 5
+  topn: 5
+  target_exposure_pct: 80
+  selection_policy: stable_diverse
+design_note: 候选池来自已观察的双发现窗口稳定因子；仅为迭代探索。每轮去冗余仅使用本轮发现期，按配置列表顺序优先保留，最大两两绝对相关<=0.5。90%方差分母为去冗余后保留因子。

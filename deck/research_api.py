@@ -22,6 +22,21 @@ def get(path,query):
     if path=='/api/studio/data-quality':
         from data.research_quality import latest
         return latest()
+    if path=='/api/studio/factor-mining':
+        from factors.research_axis import latest
+        return latest()
+    if path=='/api/studio/factor-parameters':
+        from factors.research_parameter_results import latest
+        return latest()
+    if path=='/api/studio/research-evaluation-schema':
+        from factors.research_evaluation import FACTOR_SCHEMA, PARAMETER_SCHEMA, STRATEGY_SCHEMA
+        return dict(ok=True, factor=FACTOR_SCHEMA, parameter=PARAMETER_SCHEMA, strategy=STRATEGY_SCHEMA)
+    if path=='/api/studio/strategy-assembly':
+        from backtest.research_assembly_catalog import latest
+        return latest()
+    if path=='/api/studio/technical-rules':
+        from backtest.research_rule_catalog import catalog
+        return catalog()
     if path=='/api/studio/positions':
         from backtest.research_positions import overview
         return overview(query)
@@ -38,14 +53,14 @@ def get(path,query):
         from data.stock_profile import ai_status
         return ai_status(query)
     if path=='/api/studio/market/analysis':
-        from data.market_analysis import analysis
+        from data.market_cloud import analysis
         return analysis(query)
     if path=='/api/studio/assistant/context':
         from backtest.research_assistant import context
         return context(query)
     if path=='/api/studio/market':
-        from data.research_charts import market
-        return market(query)
+        from data.market_cloud import chart
+        return chart(query)
     if path=='/api/studio/config':
         return dict(ok=True,**read_config('research_services'),workflow=read_config('research_workflow'),factor_revision=revision(),ml=ml_config(),references=read_config('research_references'))
     if path=='/api/studio/stocks':return stock_list(query)
@@ -55,6 +70,9 @@ def get(path,query):
         from backtest.research_catalog import catalog
         return catalog()
     if path=='/api/studio/experiments':return experiment_detail(query['id']) if query.get('id') else experiment_list(query)
+    if path=='/api/studio/trade-replay':
+        from backtest.research_trade_replay import get as trade_replay
+        return trade_replay(query)
     if path=='/api/studio/analyses':return analysis_records(query)
     if path.startswith('/api/studio/jobs/'):
         bits=path.split('/');return status(bits[4],with_result=len(bits)>5 and bits[5]=='result')
@@ -92,8 +110,8 @@ def post(path,payload,compute_lock):
         from data.stock_profile import ai_analyse
         return ai_analyse(payload)
     if path=='/api/studio/market/analysis':
-        from data.market_analysis import build
-        return build(payload,compute_lock)
+        from data.market_cloud import build
+        return build(payload)
     if path=='/api/studio/automation/tasks':
         from backtest.research_automation import save_task
         return save_task(payload)

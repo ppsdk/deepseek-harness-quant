@@ -15,6 +15,7 @@
   #bt-parameters{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));align-items:stretch;gap:14px}
   .bt-param-group{border:1px solid #303e51;border-radius:8px;min-width:0;margin:0;padding:12px;display:flex;flex-wrap:wrap;align-content:start;gap:13px}
   .bt-param-group legend{font-size:13px;color:#c7d5eb;padding:0 6px}.bt-param-group label{display:flex;flex-direction:column;gap:6px;max-width:100%}.bt-param-group input,.bt-param-group select{margin-left:0}
+  .bt-param-group label[hidden]{display:none}
   #bt-pool-note{grid-column:1/-1;font-size:12px;color:#aab4c1;line-height:1.8;margin:0}
   #bt-filter select,#bt-filter input{background:#182334;color:#e0e8f7;border:1px solid #3c506e}
   #bt-archive>div{grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr))!important}
@@ -88,7 +89,7 @@
 <script src="/v2/components/search.js"></script>
 <script src="/v2/components/sidebar.js"></script>
 <script src="/v2/components/studio.js"></script>
-<script src="/v2/components/indicator_editor.js"></script><script src="/v2/components/research_chart.js"></script><script src="/v2/components/backtest_report.js"></script>
+<script src="/v2/components/indicator_editor.js"></script><script src="/v2/components/research_chart.js"></script><script src="/v2/components/trade_replay.js"></script><script src="/v2/components/rule_replay.js"></script><script src="/v2/components/backtest_report.js"></script>
 <script>
 (function () {
   LW.sidebar.render('sidebar', {active: 'backtest'});
@@ -184,13 +185,21 @@
       Object.keys(PARAMS).forEach(function (key) {
         if(PARAMS[key].hidden)return;
         var field = PARAMS[key], label = document.createElement('label'), input = document.createElement(field.type==='select'?'select':'input');
-        label.textContent = field.label; input.id = 'bt-' + key; if(field.type==='select'){Object.keys(field.options).forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=field.options[v];input.appendChild(o);});}else input.type = field.type;
+         label.textContent = field.label; input.id = 'bt-' + key; if(field.type==='select'){Object.keys(field.options||{}).forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=typeof field.options[v]==='string'?field.options[v]:field.options[v].label||v;input.appendChild(o);});}else input.type = field.type;
         input.value = field.default == null ? '' : field.default;
-        ['min', 'max', 'step'].forEach(function (prop) { if (field[prop] != null) input[prop] = field[prop]; });
+         ['min', 'max', 'step'].forEach(function (prop) { if (field[prop] != null) input[prop] = field[prop]; }); input.required=field.required!==false&&field.default==null?true:!!field.required; if(input.type==='number')input.inputMode='decimal'; input.dataset.key=key;
         input.style.width = field.type === 'select' ? '260px' : field.type === 'text' ? '230px' : field.type === 'date' ? '140px' : '100px';
         label.appendChild(input); (fieldHosts[key] || form).appendChild(label);
       });
       renderStrategyOptions();
+      (function(){
+        var mode=document.getElementById('bt-trade_mode');if(!mode)return;
+        var group=(d.parameter_groups||[]).find(function(g){return (g.fields||[]).includes('trade_mode');});
+        function sync(){var event=mode.value==='event',fixed=document.getElementById('bt-rebalance_days');if(fixed)fixed.closest('label').hidden=event;
+          ((group||{}).fields||[]).filter(function(k){return k!=='trade_mode';}).forEach(function(k){var el=document.getElementById('bt-'+k);if(el)el.closest('label').hidden=!event;});}
+        mode.addEventListener('change',sync);sync();
+        document.getElementById('bt-strategy').addEventListener('change',function(){setTimeout(sync,0);});
+      }());
       // ── 周期快捷按钮（填充 bt-start / bt-end）────────────────────────────
       (function(){
         var startEl = document.getElementById('bt-start'), endEl = document.getElementById('bt-end');
@@ -252,10 +261,11 @@
   loadStrategies().then(function(){var resumed=LW.studio.resume('bt-run-status',renderResult);if(resumed){document.getElementById('bt-run').disabled=true;resumed.catch(function(){}).finally(function(){document.getElementById('bt-run').disabled=false;});}});
 
   document.getElementById('bt-run').onclick = function () {
+    var invalid=Array.from(document.querySelectorAll('#bt-parameters input,#bt-parameters select')).find(function(input){return !input.disabled&&!input.reportValidity();}); if(invalid){invalid.focus();return;}
     var values = {strategy: document.getElementById('bt-strategy').value};
     Object.keys(PARAMS).forEach(function (key) {
       if(PARAMS[key].hidden)return;
-      values[key] = document.getElementById('bt-' + key).value;
+       var input=document.getElementById('bt-' + key); values[key] = input.type==='number'?(input.value===''?null:Number(input.value)):input.value;
     });
     values.indicator_params=btIndicatorEditor.get();
     var btn = document.getElementById('bt-run'); btn.disabled = true;

@@ -1,0 +1,311 @@
+research_version: v3_causal_recovery_and_stable_repair
+as_of: '2026-10-28'
+output_dir: output/strategy_research/mainboard_repair_v3
+snapshot_dir: output/strategy_research/mainboard_low_turnover
+data_start: '2017-11-01'
+data_end: '2026-10-23'
+resources:
+  read_chunk_stocks: 100
+benchmark:
+  code: 000300.SH
+  label: 沪深300价格指数
+  description: 基准为沪深300价格指数；它是价格指数，未计分红，不能把结果宣称成严格的全收益净超额。
+universe:
+  code_pattern: ^(60[0135]\d{3}\.SH|00[0-3]\d{3}\.SZ)$
+  min_history_days: 252
+  liquidity_window: 20
+  min_average_amount: 20000000
+  exclude_st: true
+periods:
+  observation:
+    start: '2026-01-01'
+    end: '2026-10-23'
+  full:
+    start: '2019-01-01'
+    end: '2026-10-23'
+rounds:
+- id: round_1
+  discovery:
+    start: '2019-01-01'
+    end: '2022-12-31'
+  validation:
+    start: '2023-01-01'
+    end: '2024-12-31'
+- id: round_2
+  discovery:
+    start: '2023-01-01'
+    end: '2024-12-31'
+  validation:
+    start: '2025-01-01'
+    end: '2025-12-31'
+targets:
+  annual_return: 0.2
+  excess_annual_return: 0.2
+  accepted_return_measures:
+  - absolute
+  - excess_pp
+  max_drawdown: -0.1
+  max_holdings: 5
+  max_traded_codes_per_day: 5
+  max_replacements: 5
+execution:
+  initial_capital: 1000000
+  topn: 5
+  commission_bps: 3
+  min_commission: 5
+  stamp_tax_bps: 10
+  slippage_bps: 10
+  allocation: equal
+  max_position_pct: 20
+  rebalance_threshold_pct: 3
+  trade_mode: fixed
+  min_trade_interval_days: 20
+  max_traded_codes_per_day: 5
+  entry_ma_fast: 20
+  entry_ma_slow: 60
+  exit_ma_period: 20
+  ma_confirm_days: 2
+  target_exposure_pct: 100
+  timing_index: 000300.SH
+  timing_rule: recovery_slope_confirm
+  timing_execution: daily_exit
+  stop_loss_pct: 0
+  take_profit_pct: 0
+  trailing_stop_pct: 0
+  max_holding_days: 0
+  risk_cooldown_days: 5
+risk_pools:
+  balanced:
+    description: 低波、低跳空、低振幅、低下行波动和低极端日收益的温和风险池。
+    limits:
+    - factor: lowvol_60
+      max_percentile: 0.65
+      sign: -1
+    - factor: research_gap_risk
+      max_percentile: 0.75
+      sign: -1
+    - factor: intraday_range_20
+      max_percentile: 0.65
+      sign: -1
+    - factor: downside_realized_vol_20
+      max_percentile: 0.75
+      sign: -1
+    - factor: max_daily_return_20
+      max_percentile: 0.8
+      sign: -1
+    trend:
+      period: 60
+      min_return: -0.15
+  liquid_lowrisk:
+    description: 同时压低换手、波动、跳空、振幅和极端日收益，优先选择可低频交易的安心股票。
+    limits:
+    - factor: turn_20d
+      max_percentile: 0.55
+      sign: -1
+    - factor: lowvol_60
+      max_percentile: 0.55
+      sign: -1
+    - factor: research_gap_risk
+      max_percentile: 0.7
+      sign: -1
+    - factor: intraday_range_20
+      max_percentile: 0.6
+      sign: -1
+    - factor: max_daily_return_20
+      max_percentile: 0.75
+      sign: -1
+    trend:
+      period: 60
+      min_return: -0.1
+  strict:
+    description: 更窄的低风险池，用于检验进一步压低风险是否改善风险调整收益。
+    limits:
+    - factor: lowvol_60
+      max_percentile: 0.45
+      sign: -1
+    - factor: research_gap_risk
+      max_percentile: 0.65
+      sign: -1
+    - factor: intraday_range_20
+      max_percentile: 0.5
+      sign: -1
+    - factor: downside_realized_vol_20
+      max_percentile: 0.6
+      sign: -1
+    - factor: max_daily_return_20
+      max_percentile: 0.75
+      sign: -1
+    trend:
+      period: 60
+      min_return: -0.12
+entry_rules:
+  none:
+    description: 风险池和因子排名直接建仓，不额外要求当日均线状态。
+  ma20_repair:
+    description: 收盘回到 MA20 上方不到 5%，且 MA5 不低于 MA20。
+    fast: 5
+    slow: 20
+    min_price_vs_slow: 0.0
+    max_price_vs_slow: 0.05
+    require_fast_above_slow: true
+    confirm_days: 1
+  ma60_zone:
+    description: 收盘位于 MA60 上方 0% 至 8%，且 MA20 不低于 MA60 的温和修复区间。
+    fast: 20
+    slow: 60
+    min_price_vs_slow: 0.0
+    max_price_vs_slow: 0.08
+    require_fast_above_slow: true
+    confirm_days: 1
+  ma60_pullback:
+    description: MA60 上行时缩量回踩到其附近，收盘未跌破 MA60 下沿 1%，且 MA20 不低于 MA60。
+    fast: 20
+    slow: 60
+    min_price_vs_slow: -0.01
+    max_price_vs_slow: 0.06
+    require_fast_above_slow: true
+    slow_rising_days: 10
+    min_slow_slope: 0.0
+    volume_shrink_window: 20
+    max_volume_ratio: 0.85
+    confirm_days: 1
+candidates:
+  low_position_repair:
+    label: 低位修复与低振幅
+    pool: balanced
+    entry_rule: ma20_repair
+    factors:
+    - name: price_percentile_60
+      sign: -1
+      weight: 1
+    - name: intraday_range_20
+      sign: -1
+      weight: 1
+    - name: downside_realized_vol_20
+      sign: -1
+      weight: 1
+  shrinking_exhaustion:
+    label: 低换手缩量衰竭
+    pool: liquid_lowrisk
+    entry_rule: ma20_repair
+    factors:
+    - name: turn_20d
+      sign: -1
+      weight: 1
+    - name: turnover_shrink_20
+      sign: -1
+      weight: 1
+    - name: price_pressure_20
+      sign: -1
+      weight: 1
+  quiet_trend:
+    label: 均线支持下避免过热
+    pool: balanced
+    entry_rule: ma60_zone
+    factors:
+    - name: roc_20
+      sign: -1
+      weight: 1
+    - name: bias_60
+      sign: -1
+      weight: 1
+    - name: max_daily_return_20
+      sign: -1
+      weight: 1
+  pressure_repair:
+    label: 量价压力消退后的修复
+    pool: balanced
+    entry_rule: ma20_repair
+    factors:
+    - name: price_pressure_20
+      sign: -1
+      weight: 1
+    - name: obv_momentum_20
+      sign: -1
+      weight: 1
+    - name: o2c_20
+      sign: -1
+      weight: 1
+    - name: mfi_14
+      sign: -1
+      weight: 1
+  lowvol_defensive:
+    label: 低波低换手低跳空防御
+    pool: liquid_lowrisk
+    entry_rule: none
+    factors:
+    - name: lowvol_60
+      sign: -1
+      weight: 1
+    - name: turn_20d
+      sign: -1
+      weight: 1
+    - name: research_gap_risk
+      sign: -1
+      weight: 1
+    - name: downside_realized_vol_20
+      sign: -1
+      weight: 1
+stock_selection_policies:
+  stable_diverse:
+    label: 持仓缓冲＋换股门槛＋相关性分散
+    retain_rank: 15
+    replacement_score_margin: 0.08
+    correlation_limit: 0.82
+    correlation_window: 120
+    correlation_min_observations: 60
+    max_candidates: 100
+variants:
+- id: monthly_cap3
+  label: 月频五只满仓每日最多三只
+  rebalance_days: 20
+  min_trade_interval_days: 20
+  max_traded_codes_per_day: 3
+  target_exposure_pct: 100
+  selection_policy: stable_diverse
+- id: ten_day_event_80
+  label: 均线事件至少十日八成仓每日最多两只
+  trade_mode: event
+  rebalance_days: 10
+  min_trade_interval_days: 10
+  max_traded_codes_per_day: 2
+  target_exposure_pct: 80
+  selection_policy: stable_diverse
+- id: weekly_event_60
+  label: 均线事件至少五日六成仓每日最多两只
+  trade_mode: event
+  rebalance_days: 5
+  min_trade_interval_days: 5
+  max_traded_codes_per_day: 2
+  target_exposure_pct: 60
+  selection_policy: stable_diverse
+ic:
+  horizons:
+  - 5
+  - 20
+  min_stocks: 50
+  sample_every_days: 5
+selection:
+  finalists: 3
+  max_search_combinations_per_round: 15
+stress:
+  slippage_bps: 30
+  commission_bps: 5
+validation_is_fresh_blind: false
+factor_cache_dir: output/strategy_research/mainboard_repair_v3_explore/factor_scan/cache
+timing_rules:
+  recovery_slope_confirm:
+    operation: ma_risk_hysteresis_v2
+    fast: 20
+    slow: 60
+    risk_period: 120
+    drawdown_period: 60
+    drawdown_threshold: -0.1
+    recovery_confirm: 5
+    fast_slope_days: 5
+    slow_slope_days: 10
+    recovery_fast_slope: 0.0
+    recovery_slow_slope: 0.0
+    recovery_drawdown_threshold: -0.05
+    warmup_calendar_days: 500
+research_design_note: 迭代探索：因子设计参考两个发现窗口，其中2023-2024也是第一轮验证期；因此整轮只作为已观察数据的时间隔离回放，不作为严格样本外证据。

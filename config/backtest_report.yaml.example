@@ -1,5 +1,9 @@
 page_size: 25
 histogram_bins: 16
+benchmark_metrics:
+  benchmark_annual_return: {label: 基准年化收益, format: percent}
+  annual_excess_pp: {label: 年化超额（百分点）, format: number}
+  relative_annual_return: {label: 相对净值年化, format: percent}
 trade_chart:
   max_bars: 160
   max_indicators: 6
@@ -26,6 +30,7 @@ cost_labels:
   slippage_cost: 滑点影响估计
 side_labels: {buy: 买入, sell: 卖出}
 rejection_reasons:
+  holding_limit: 旧持仓仍占用名额，禁止超过持仓只数上限
   missing_or_suspended: 当日行情缺失或停牌
   one_price_bar: 当日仅一个价格（引擎保守禁止成交）
 trade_columns:

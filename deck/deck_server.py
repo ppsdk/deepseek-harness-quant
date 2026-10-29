@@ -226,7 +226,7 @@ class Handler(BaseHTTPRequestHandler):
             obj = _json_safe(obj)
         except Exception:
             pass
-        self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"))
+        self._send(code, json.dumps(obj, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8")
 
     def _redirect(self, location: str):
         """★U1-4 301 合并：旧页路由 → 新页（浏览器自动跳转，老链接/书签仍可用）"""

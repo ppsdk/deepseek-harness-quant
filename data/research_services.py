@@ -7,6 +7,7 @@ from pathlib import Path
 import sqlite3
 import subprocess
 import sys
+import threading
 import xml.etree.ElementTree as ET
 
 import pandas as pd
@@ -103,25 +104,53 @@ def update_papers():
     return dict(ok=True,count=len(papers),message=f'已更新 {len(papers)} 篇论文。')
 
 
-def update_stocks():
+_download_start_lock=threading.Lock()
+_download_process=None
+
+
+def update_stocks(payload=None):
+    with _download_start_lock:return _update_stocks(payload or {})
+
+
+def _update_stocks(payload):
+    global _download_process
     from data.akshare_loader import load_config,read_status
     report=read_status(summary=True)
-    if report.get('state')=='running' and pid_alive(report.get('pid')):
+    if (_download_process is not None and _download_process.poll() is None) or (report.get('state')=='running' and pid_alive(report.get('pid'))):
         return dict(ok=True,existing=True,message='已有股票下载任务正在运行，本次不重复启动。',completed=report.get('completed',0),total=report.get('requested_stocks',0))
     log=BASE/'output/akshare_manual.log';log.parent.mkdir(parents=True,exist_ok=True)
-    start=settings()['updates']['price_start']
+    start=date.fromisoformat(payload.get('start') or settings()['updates']['price_start']).isoformat()
+    end=date.fromisoformat(payload.get('end') or date.today().isoformat()).isoformat()
+    if start>end:raise ValueError('开始日期不能晚于结束日期。')
+    import re
+    codes=payload.get('codes','')
+    if isinstance(codes,str):codes=[c.strip().upper() for c in re.split(r'[\s,，;；]+',codes) if c.strip()]
+    if payload.get('retry_failed'):
+        codes=[row['code'] for row in read_status().get('stocks',[]) if row.get('state')=='failed']
+        if not codes:raise ValueError('没有可重试的失败股票。')
+    if not isinstance(codes,list) or any(not isinstance(c,str) or not re.fullmatch(r'\d{6}\.(SH|SZ|BJ)',c) for c in codes):raise ValueError('股票代码需使用000001.SZ这样的完整形式。')
+    command=[sys.executable,'-u','-m','data.akshare_loader','--start',start,'--end',end,'--refresh','--verify-gaps','--all']
+    command+=['--codes',','.join(dict.fromkeys(codes))] if codes else ['--universe','all_a']
     with log.open('ab') as handle:
-        proc=subprocess.Popen([sys.executable,'-u','-m','data.akshare_loader','--universe','all_a','--all','--start',start,'--end',date.today().isoformat(),'--refresh','--verify-gaps'],cwd=BASE,
+        proc=subprocess.Popen(command,cwd=BASE,
                               stdout=handle,stderr=handle,creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+        _download_process=proc
     return dict(ok=True,pid=proc.pid,message='已启动日线更新，完成后继续检查缺日与缺字段并尝试补齐。前复权按完整窗口刷新；仍缺数据会显示，进度与补齐报告见数据页。')
 
 
 def update_directory():
-    from data.akshare_loader import load_config,load_universe,persist_universe
+    from data.akshare_loader import load_all_a_universe,load_config,persist_universe
     from data.cache import CACHE_DIR
-    cfg=load_config();cfg['universe']='all_a';rows=load_universe(cfg);persist_universe(rows,CACHE_DIR)
+    cfg=load_config();cfg['universe']='all_a'
+    rows,universe=load_all_a_universe(cfg)
+    if universe['source']=='online':
+        persist_universe(rows,CACHE_DIR)
     metadata=update_listing_dates()
-    return dict(ok=True,count=len(rows),listing_dates=metadata,message=f'已更新 {len(rows)} 只股票的名称和代码；上市日期写入 {metadata["updated"]} 条。'+(' 部分来源未完成：'+'；'.join(metadata['errors']) if metadata['errors'] else ''))
+    source_message='已更新股票目录' if universe['source']=='online' else '在线目录暂不可用，已沿用本地目录'
+    message=f'{source_message}，共 {len(rows)} 只股票；上市日期写入 {metadata["updated"]} 条。'
+    if universe.get('warning'):message+=' '+universe['warning']
+    if metadata['errors']:message+=' 部分上市日期来源未完成：'+'；'.join(metadata['errors'])
+    return dict(ok=True,count=len(rows),source=universe['source'],attempts=universe['attempts'],warning=universe.get('warning'),listing_dates=metadata,message=message)
 
 
 def update_listing_dates():

@@ -40,7 +40,8 @@ class TimingTests(unittest.TestCase):
         panels['high'].loc[dates[13],codes[0]]=panels['low'].loc[dates[13],codes[0]]
         result=runner.simulate(panels,score.where(panels['_timing'].eq(1)),p)
         sells=[r for r in result['trades'] if r['side']=='sell']
-        self.assertEqual(sells[0]['date'],dates[14]);self.assertEqual(sells[0]['signal_date'],dates[13]);self.assertEqual(sells[0]['trigger'],'market_risk_exit')
+        # A blocked order retains the original risk signal, even when retried.
+        self.assertEqual(sells[0]['date'],dates[14]);self.assertEqual(sells[0]['signal_date'],dates[12]);self.assertEqual(sells[0]['trigger'],'market_risk_exit')
         self.assertTrue(any(r['date']==dates[13] and r['reason']=='one_price_bar' for r in result['rejections']))
         buys=[r['date'] for r in result['trades'] if r['side']=='buy'];self.assertEqual(buys,[dates[10],dates[20]])
 

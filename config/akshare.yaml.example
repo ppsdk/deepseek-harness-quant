@@ -1,6 +1,8 @@
 # AKShare A-share download settings. Actual data remains in the ignored cache.
 universe: all_a            # all_a / csi300 / explicit
 codes: []                  # explicit: ["600519.SH", "000001.SZ"]
+universe_retries: 1        # 在线目录首次失败后的重试次数；仍失败时读取本地目录
+universe_retry_seconds: 1
 start: "2019-01-01"
 end: null                  # null = today in Asia/Shanghai, excluding unfinished daily bars
 adjust: qfq                # qfq / hfq / none

@@ -40,9 +40,9 @@ def _catalogue(definitions):
             continue
         key = group_for(name, spec, cfg)
         base = families[spec['family']] if spec['kind'] == 'pattern' else spec
-        fields = {k: dict(cfg['parameter_fields'][k], default=v)
+        fields = {k: dict(cfg['parameter_fields'].get(k,dict(cfg.get('generic_integer_field' if isinstance(v,int) else 'generic_float_field',{}),label=k)), default=v)
                   for k, v in base.get('params', {}).items()
-                  if k in cfg['parameter_fields'] and isinstance(v, (float, int)) and not isinstance(v, bool)}
+                  if isinstance(v, (float, int)) and not isinstance(v, bool)}
         if not fields:
             continue
         group = groups.setdefault(key, dict(label=cfg['shared_groups'].get(key, {}).get('label', base['label']),
@@ -129,7 +129,7 @@ def warmup_days(values):
     largest = 0
     for key, params in values.items():
         merged = {k: v['default'] for k, v in groups[key]['fields'].items()} | params
-        periods = [v for k, v in merged.items() if cfg['parameter_fields'][k].get('integer')]
+        periods = [v for k, v in merged.items() if groups[key]['fields'][k].get('integer')]
         if periods:
             largest = max(largest, sum(periods) * cfg['warmup_calendar_multiplier'])
         if key == 'pattern:dow':

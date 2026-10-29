@@ -1,4 +1,365 @@
 factors:
+  axis_momentum_risk_adjusted:
+    label: 风险调整动量
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 动量研究
+    kind: technical
+    operation: axis_risk_adjusted_momentum
+    params:
+      n: 60
+    requires:
+    - close
+    default_sign: 1
+    chart: false
+  axis_momentum_weighted:
+    label: 成交量加权收益
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 动量研究
+    kind: technical
+    operation: axis_volume_weighted_return
+    params:
+      n: 20
+    requires:
+    - close
+    - volume
+    default_sign: 1
+    chart: false
+  axis_volatility_parkinson:
+    label: Parkinson高低价波动
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 波动率研究
+    kind: technical
+    operation: axis_parkinson_volatility
+    params:
+      n: 20
+    requires:
+    - close
+    - high
+    - low
+    default_sign: -1
+    chart: false
+  axis_volatility_garman:
+    label: Garman-Klass波动
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 波动率研究
+    kind: technical
+    operation: axis_garman_klass
+    params:
+      n: 20
+    requires:
+    - close
+    - open
+    - high
+    - low
+    default_sign: -1
+    chart: false
+  axis_volatility_volvol:
+    label: 波动率的不稳定程度
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 波动率研究
+    kind: technical
+    operation: axis_volatility_of_volatility
+    params:
+      n: 20
+      m: 60
+    requires:
+    - close
+    default_sign: -1
+    chart: false
+  axis_volatility_kurtosis:
+    label: 收益峰度
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 波动率研究
+    kind: technical
+    operation: axis_return_kurtosis
+    params:
+      n: 60
+    requires:
+    - close
+    default_sign: -1
+    chart: false
+  axis_liquidity_amount_cv:
+    label: 成交额不稳定程度
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 流动性研究
+    kind: technical
+    operation: axis_amount_cv
+    params:
+      n: 20
+    requires:
+    - close
+    - amount
+    default_sign: -1
+    chart: false
+  axis_liquidity_amount:
+    label: 对数成交额
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 流动性研究
+    kind: technical
+    operation: axis_log_dollar_volume
+    params:
+      n: 20
+    requires:
+    - close
+    - amount
+    default_sign: -1
+    chart: false
+  axis_liquidity_roll:
+    label: Roll价差代理
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 流动性研究
+    kind: technical
+    operation: axis_roll_spread
+    params:
+      n: 20
+    requires:
+    - close
+    default_sign: -1
+    chart: false
+  axis_liquidity_zeros:
+    label: 零收益交易日比例
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 流动性研究
+    kind: technical
+    operation: axis_zero_return_fraction
+    params:
+      n: 20
+    requires:
+    - close
+    default_sign: -1
+    chart: false
+  axis_liquidity_impact:
+    label: 单位换手价格冲击
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 流动性研究
+    kind: technical
+    operation: axis_turn_price_impact
+    params:
+      n: 20
+    requires:
+    - close
+    - turn
+    default_sign: -1
+    chart: false
+  axis_valuation_ep:
+    label: 盈利收益率E/P
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_yield
+    params:
+      field: pe
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:pe
+    default_sign: 1
+    chart: false
+  axis_valuation_bp:
+    label: 账面价值收益率B/P
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_yield
+    params:
+      field: pb
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:pb
+    default_sign: 1
+    chart: false
+  axis_valuation_sp:
+    label: 销售收益率S/P
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_yield
+    params:
+      field: ps
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:ps
+    default_sign: 1
+    chart: false
+  axis_valuation_cfp:
+    label: 经营现金流收益率OCF/P
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_yield
+    params:
+      field: pcf
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:pcf
+    default_sign: 1
+    chart: false
+  axis_valuation_relative_pe:
+    label: 历史相对PE估值
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_relative_valuation
+    params:
+      field: pe
+      n: 252
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:pe
+    default_sign: 1
+    chart: false
+  axis_valuation_relative_pb:
+    label: 历史相对PB估值
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_relative_valuation
+    params:
+      field: pb
+      n: 252
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:pb
+    default_sign: 1
+    chart: false
+  axis_valuation_relative_ps:
+    label: 历史相对PS估值
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_relative_valuation
+    params:
+      field: ps
+      n: 252
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:ps
+    default_sign: 1
+    chart: false
+  axis_valuation_value_blend:
+    label: 盈利与账面复合价值
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_value_composite
+    params:
+      fields:
+      - pe
+      - pb
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:pe
+    - valuation:pb
+    default_sign: 1
+    chart: false
+  axis_valuation_broad_value:
+    label: 盈利账面销售复合价值
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_value_composite
+    params:
+      fields:
+      - pe
+      - pb
+      - ps
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:pe
+    - valuation:pb
+    - valuation:ps
+    default_sign: 1
+    chart: false
+  axis_valuation_change:
+    label: 估值修复变化
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_valuation_change
+    params:
+      field: pe
+      n: 60
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:pe
+    default_sign: 1
+    chart: false
+  axis_valuation_dispersion:
+    label: 多口径估值分歧
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_valuation_dispersion
+    params:
+      fields:
+      - pe
+      - pb
+      - ps
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:pe
+    - valuation:pb
+    - valuation:ps
+    default_sign: 1
+    chart: false
+  axis_valuation_quality_spread:
+    label: 盈利与账面估值差
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_earnings_book_spread
+    params: {smooth_n: 1}
+    requires:
+    - close
+    - valuation:pe
+    - valuation:pb
+    default_sign: 1
+    chart: false
+  axis_valuation_peg:
+    label: 正增长估值收益率1/PEG
+    description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
+    category: 估值研究
+    kind: technical
+    operation: axis_yield
+    params:
+      field: peg
+      positive_only: true
+      smooth_n: 1
+    requires:
+    - close
+    - valuation:peg
+    default_sign: 1
+    chart: false
+  research_trend_efficiency:
+    label: 有向趋势效率
+    description: 历史净价格变化除以路径长度，范围[-1,1]；工程探索因子，收益未经确认。
+    category: 趋势与结构
+    kind: technical
+    operation: research_trend_efficiency
+    params: {n: 60}
+    requires: [close]
+    default_sign: 1
+    chart: true
+  research_gap_risk:
+    label: 隔夜跳空风险
+    description: 历史开盘相对前收盘的绝对跳空均值，较低优先；工程探索因子，收益未经确认。
+    category: 量价与换手
+    kind: technical
+    operation: research_gap_risk
+    params: {n: 60}
+    requires: [open, close]
+    default_sign: -1
+    chart: true
   ema_20:
     label: 20 日指数均线 EMA
     description: 越近的价格权重越高；以首个收盘值初始化，满20根K线后显示。

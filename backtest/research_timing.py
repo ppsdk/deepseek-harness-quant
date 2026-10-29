@@ -28,6 +28,26 @@ def evaluate(frame,key,cfg,seen=None):
     elif op=='drawdown_above':
         v=c/c.rolling(rule['period']).max()-1
         return v.ge(rule['threshold']).astype(float).where(v.notna()&c.notna())
+    elif op in ('ma_risk_hysteresis','ma_risk_hysteresis_v2'):
+        fast=c.rolling(rule['fast']).mean();slow=c.rolling(rule['slow']).mean();risk=c.rolling(rule['risk_period']).mean()
+        dd=c/c.rolling(rule['drawdown_period']).max()-1
+        danger=(c.lt(risk)&fast.lt(slow))|dd.lt(rule['drawdown_threshold'])
+        known=c.notna()&fast.notna()&slow.notna()&risk.notna()&dd.notna()
+        recovery=c.gt(slow)&fast.gt(slow)
+        if op=='ma_risk_hysteresis_v2':
+            fast_slope=fast/fast.shift(int(rule['fast_slope_days']))-1
+            slow_slope=slow/slow.shift(int(rule['slow_slope_days']))-1
+            recovery &= ~danger&dd.ge(rule['recovery_drawdown_threshold'])
+            recovery &= fast_slope.ge(rule['recovery_fast_slope'])&slow_slope.ge(rule['recovery_slow_slope'])
+            known &= fast_slope.notna()&slow_slope.notna()
+        recovered=recovery.rolling(rule['recovery_confirm']).sum().eq(rule['recovery_confirm'])
+        values=[];state=0.
+        for good,bad,ready in zip(recovered,danger,known):
+            if not ready:values.append(np.nan);continue
+            if bad:state=0.
+            elif good:state=1.
+            values.append(state)
+        return pd.Series(values,index=c.index)
     elif op=='rsrs':
         n,m=rule['period'],rule['standardize_period'];low,high=frame['low'],frame['high']
         beta=low.rolling(n).cov(high)/low.rolling(n).var().replace(0,np.nan)

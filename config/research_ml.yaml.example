@@ -1,5 +1,6 @@
 seed: 42
 max_stocks: 300
+max_features: 40
 max_training_samples: 100000
 models:
   decision_tree:
@@ -103,6 +104,7 @@ horizons:
 - 10
 - 20
 bounds:
+  horizon: [1, 252]
   train_days:
   - 60
   - 1000
@@ -113,6 +115,7 @@ bounds:
   - 1
   - 126
 field_labels:
+  horizon: 预测未来几个交易日
   train_days: 每次使用过去多少个交易日训练
   min_train_days: 至少需要多少个有效训练日
   retrain_days: 每隔几个交易日重新训练

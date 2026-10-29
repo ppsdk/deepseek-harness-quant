@@ -10,6 +10,16 @@ from factors.research_manager import experiment_detail
 
 
 class BacktestReportTest(unittest.TestCase):
+    def test_named_benchmark_updates_labels_only_on_its_own_report(self):
+        value=dict(dates=['2024-01-02'],nav=[1.],metrics=dict(annual_excess_pp=20.),
+                   benchmark=dict(series_labels=dict(bench_nav='合成指数基准')))
+        report=build_report(value)
+        self.assertEqual(report['settings']['series']['bench_nav']['label'],'合成指数基准')
+        self.assertIn('annual_excess_pp',report['settings']['metrics'])
+        plain=build_report(dict(dates=['2024-01-02'],nav=[1.]))
+        self.assertNotEqual(plain['settings']['series']['bench_nav']['label'],'合成指数基准')
+        self.assertNotIn('annual_excess_pp',plain['settings']['metrics'])
+
     def test_month_and_year_compound_instead_of_sum(self):
         report = build_report(dict(dates=['2024-01-02', '2024-01-31', '2024-02-01', '2025-01-02'],
                                    nav=[.9, .99, 1.089, 1.1979]))

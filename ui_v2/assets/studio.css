@@ -43,9 +43,11 @@
 .studio-table{min-width:680px}.studio-grid>*{min-width:0}.studio-controls label{max-width:100%}.studio-scroll{max-width:100%}
 
 .factor-workbench-grid{grid-template-columns:1fr}.formula-workbench details{border-top:1px solid #344255;padding-top:12px;margin:12px 0}.formula-workbench summary{cursor:pointer;color:#bdd5f3}.formula-condition{padding:10px;border:1px solid #344255;border-radius:7px}.quality-repair-details{margin:12px 0;max-width:100%;overflow-wrap:anywhere}.quality-repair-details summary{cursor:pointer}.studio-table details{max-width:350px;overflow-wrap:anywhere}
+.studio-checks{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:8px;max-height:330px;overflow:auto;margin:12px 0}.studio-checks label{display:flex;align-items:flex-start;gap:7px;border:1px solid #344255;border-radius:6px;padding:8px;font-size:12px;line-height:1.7}.studio-checks input{flex-shrink:0;margin-top:4px}.studio-checks label:has(input:checked){background:#252138;border-color:#8070b2}
 
 /* 双层动量（策略管理页） */
 .dm-tag{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:600;white-space:nowrap}.dm-v5{background:rgba(34,197,94,.15);color:#4ade80}.dm-v4{background:rgba(20,184,166,.14);color:#2dd4bf}.dm-v3{background:rgba(234,179,8,.13);color:#facc15}.dm-v2{background:rgba(249,115,22,.13);color:#fb923c}.dm-v1{background:rgba(239,68,68,.12);color:#f87171}
 .dm-swatch{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:middle}.dm-picked td{background:rgba(111,166,240,.12)}
 .dm-ai{background:#141d2a;border:1px solid #2f3d52;border-radius:7px;padding:12px 15px;font-size:13px;line-height:1.9;color:#d3ddec;overflow-wrap:anywhere}
 #dual-momentum h3{font-size:15px;margin:22px 0 10px}
+.research-subsections{display:grid;gap:14px;margin-top:14px}.research-subsections>details{border:1px solid #303b52;border-radius:8px;background:rgba(17,22,32,.55);padding:0 14px}.research-subsections>details>summary{cursor:pointer;padding:14px 0;color:#d7e2f4;font-weight:600}.research-subsections .studio-scroll{max-height:560px;overflow:auto}.research-subsections table{min-width:1050px}.factor-evaluation{line-height:1.7;font-variant-numeric:tabular-nums;min-width:230px}.factor-evaluation b{color:#a9c7ff}

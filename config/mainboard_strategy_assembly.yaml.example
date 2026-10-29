@@ -1,0 +1,85 @@
+as_of: '2026-10-28'
+source_config: factor_parameter_research
+budget_config: factor_parameter_budget
+output_dir: output/strategy_research/mainboard_strategy_assembly_v1
+core_parameter_id: liquidity_turn_variance__n10
+reference_exposure_pct: 45
+technical_categories: [momentum, volatility, liquidity]
+technical_complements: 2
+valuation_complements: 1
+max_abs_factor_correlation: 0.5
+pca_explained_variance: 0.9
+sample_every_days: 5
+max_correlation_samples: 50000
+technical_finalists: 3
+valuation_finalists: 1
+compositions:
+  core:
+    label: 换手率稳定核心
+    scope: mainboard
+    weights: {core: 1.0}
+  technical_pair:
+    label: 核心与低相关技术因子
+    scope: mainboard
+    weights: {core: 0.75, technical_1: 0.25}
+  technical_mix:
+    label: 三因子低相关技术组合
+    scope: mainboard
+    weights: {core: 0.6, technical_1: 0.2, technical_2: 0.2}
+  valuation_pair:
+    label: 核心与低相关估值因子
+    scope: valuation_sample
+    weights: {core: 0.75, valuation_1: 0.25}
+  valuation_control:
+    label: 估值样本内核心对照
+    scope: valuation_sample
+    weights: {core: 1.0}
+execution_variants:
+  monthly:
+    label: 月频持仓缓冲
+    trade_mode: fixed
+    rebalance_days: 20
+    timing_rule: none
+    signal: none
+    stop_loss_pct: 0
+    take_profit_pct: 0
+    trailing_stop_pct: 0
+  weekly:
+    label: 周频持仓缓冲
+    trade_mode: fixed
+    rebalance_days: 5
+    timing_rule: none
+    signal: none
+    stop_loss_pct: 0
+    take_profit_pct: 0
+    trailing_stop_pct: 0
+  trend_event:
+    label: 双均线事件与强风险退出
+    trade_mode: event
+    rebalance_days: 20
+    timing_rule: recovery_slope_confirm
+    signal: trend
+    fast: 20
+    slow: 60
+    confirm_days: 2
+    exit_period: 60
+    stop_loss_pct: 5
+    take_profit_pct: 20
+    trailing_stop_pct: 8
+  pullback_event:
+    label: 均线回踩修复与强风险退出
+    trade_mode: event
+    rebalance_days: 20
+    timing_rule: recovery_slope_confirm
+    signal: pullback
+    fast: 20
+    slow: 60
+    confirm_days: 2
+    exit_period: 60
+    slope_days: 10
+    min_slow_slope: 0.0
+    min_price_vs_fast: -0.02
+    max_price_vs_fast: 0.04
+    stop_loss_pct: 5
+    take_profit_pct: 20
+    trailing_stop_pct: 8

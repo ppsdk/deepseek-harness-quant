@@ -59,14 +59,14 @@ def start(payload,compute_lock):
     from data.research_services import update_papers,update_stocks,update_directory,update_benchmark
     from data.research_quality import audit,repair
     from factors.research_formula import preview
-    from backtest.research_signals import check
+    from backtest.research_signals import check,create_candidates
     functions={'factor_analysis':analyse,'ml':run_ml,'backtest':run_research,'timing_compare':compare,
-               'papers':lambda _:update_papers(),'stocks':lambda _:update_stocks(),
+               'papers':lambda _:update_papers(),'stocks':update_stocks,
                'directory':lambda _:update_directory(),'benchmark':lambda p:update_benchmark(p.get('index')),
-               'formula_preview':preview,'signal_check':check,'data_audit':audit,'data_repair':repair}
+               'formula_preview':preview,'signal_check':check,'candidate_screen':create_candidates,'data_audit':audit,'data_repair':repair}
     action=payload.get('action');args=payload.get('params',{})
     if action not in functions or not isinstance(args,dict):raise ValueError('任务类型或参数不正确。')
-    compute=action in ('factor_analysis','ml','backtest','timing_compare','formula_preview','signal_check','data_audit','data_repair')
+    compute=action in ('factor_analysis','ml','backtest','timing_compare','formula_preview','signal_check','candidate_screen','data_audit','data_repair')
     signature=hashlib.sha256(json.dumps(args,sort_keys=True,ensure_ascii=False,allow_nan=False).encode()).hexdigest()
     with LOCK:
         if action in ACTIVE:

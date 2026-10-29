@@ -1,0 +1,77 @@
+as_of: '2026-10-28'
+source_config: factor_parameter_research
+budget_config: factor_parameter_budget
+output_dir: output/strategy_research/mainboard_strategy_assembly_v2
+core_parameter_id: liquidity_turn_variance__n10
+reference_exposure_pct: 45
+technical_categories:
+- momentum
+- volatility
+- liquidity
+technical_complements: 2
+valuation_complements: 1
+max_abs_factor_correlation: 0.5
+pca_explained_variance: 0.9
+sample_every_days: 5
+max_correlation_samples: 50000
+technical_finalists: 2
+valuation_finalists: 0
+compositions:
+  core:
+    label: 换手率稳定核心
+    scope: mainboard
+    weights:
+      core: 1.0
+  technical_shortlist:
+    label: 稳定候选池内反转排序
+    scope: mainboard
+    weights:
+      core: 0.3
+      technical_1: 0.7
+    core_pool_size: 30
+execution_variants:
+  monthly:
+    label: 月频持仓缓冲
+    trade_mode: fixed
+    rebalance_days: 20
+    timing_rule: none
+    signal: none
+    stop_loss_pct: 0
+    take_profit_pct: 0
+    trailing_stop_pct: 0
+  individual_ma:
+    label: 仅个股均线事件
+    trade_mode: event
+    rebalance_days: 20
+    timing_rule: none
+    signal: trend
+    fast: 20
+    slow: 60
+    confirm_days: 2
+    exit_period: 60
+    stop_loss_pct: 5
+    take_profit_pct: 20
+    trailing_stop_pct: 8
+  market_risk:
+    label: 仅大盘强风险退出
+    trade_mode: fixed
+    rebalance_days: 20
+    timing_rule: recovery_slope_confirm
+    signal: none
+    stop_loss_pct: 0
+    take_profit_pct: 0
+    trailing_stop_pct: 0
+  trend_event:
+    label: 双均线事件与强风险退出
+    trade_mode: event
+    rebalance_days: 20
+    timing_rule: recovery_slope_confirm
+    signal: trend
+    fast: 20
+    slow: 60
+    confirm_days: 2
+    exit_period: 60
+    stop_loss_pct: 5
+    take_profit_pct: 20
+    trailing_stop_pct: 8
+study_note: 首轮加权组合后追加拆解：稳定候选池内排序、均线与大盘退出分别对照；非新盲测。

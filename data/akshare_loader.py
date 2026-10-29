@@ -77,7 +77,11 @@ def read_status(summary=False):
     if not STATUS.exists():
         return {"state": "not_started", "message": "尚未运行 AKShare 下载", "stocks": []}
     report = json.loads(STATUS.read_text(encoding="utf-8"))
+    if report.get('state')=='running':
+        from data.research_services import pid_alive
+        if not pid_alive(report.get('pid')):report.update(state='interrupted',error='下载进程已结束，任务未正常完成；可重新更新或重试失败股票。')
     if summary:
+        report['failed_stocks']=[row for row in report.get('stocks',[]) if row.get('state')=='failed']
         report["stocks"] = report.get("stocks", [])[-100:]
         request = report.get("request", {})
         if "codes" in request:
@@ -115,6 +119,70 @@ def canonical_code(code):
     raise ValueError(f"无法识别 A 股市场: {code}")
 
 
+def normalize_universe(rows):
+    """Validate and normalize a stock catalogue without inventing members."""
+    if rows is None or rows.empty:
+        return pd.DataFrame(columns=["code", "name"])
+    missing = {"code", "name"} - set(rows.columns)
+    if missing:
+        raise ValueError(f"股票目录缺少字段: {', '.join(sorted(missing))}")
+    clean = rows[["code", "name"]].copy()
+    clean["code"] = clean["code"].map(canonical_code)
+    clean["name"] = clean["name"].fillna("").astype(str).str.strip()
+    return clean.drop_duplicates("code").sort_values("code").reset_index(drop=True)
+
+
+def load_cached_universe(cache_dir=None):
+    """Read the last verified catalogue from SQLite, then the CSV snapshot."""
+    cache_dir = Path(cache_dir or CACHE_DIR)
+    sources = (
+        (cache_dir / "stock_basic.db", "sqlite"),
+        (cache_dir / "akshare_universe_latest.csv", "csv"),
+    )
+    for path, kind in sources:
+        if not path.exists():
+            continue
+        try:
+            if kind == "sqlite":
+                with closing(sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)) as con:
+                    rows = pd.read_sql_query("SELECT code, name FROM stock_basic", con)
+            else:
+                rows = pd.read_csv(path, dtype=str).reindex(columns=["code", "name"])
+            clean = normalize_universe(rows)
+            if not clean.empty:
+                return clean
+        except (OSError, sqlite3.Error, ValueError, pd.errors.ParserError):
+            continue
+    return pd.DataFrame(columns=["code", "name"])
+
+
+def load_all_a_universe(config):
+    """Retry the online catalogue, then continue from the last local snapshot."""
+    retries = max(0, int(config.get("universe_retries", 1)))
+    attempts = retries + 1
+    error = None
+    for attempt in range(attempts):
+        try:
+            rows = load_universe(config)
+            if not rows.empty:
+                return rows, {"source": "online", "attempts": attempt + 1}
+            error = ValueError("在线股票目录为空")
+        except Exception as exc:  # Provider transports expose different exception types.
+            error = exc
+        if attempt + 1 < attempts:
+            time.sleep(max(0.0, float(config.get("universe_retry_seconds", 1.0))))
+    cached = load_cached_universe(CACHE_DIR)
+    if not cached.empty:
+        detail = f"{type(error).__name__}: {error}" if error else "在线股票目录为空"
+        return cached, {
+            "source": "local_cache",
+            "attempts": attempts,
+            "warning": f"在线股票目录加载失败，已沿用本地目录继续更新：{detail[:300]}",
+        }
+    detail = f"{type(error).__name__}: {error}" if error else "在线股票目录为空"
+    raise RuntimeError(f"全市场股票目录获取失败，且本地目录不可用；日线更新尚未开始：{detail[:300]}")
+
+
 def load_universe(config):
     import akshare as ak
     kind = config["universe"]
@@ -128,8 +196,7 @@ def load_universe(config):
                 columns={"成分券代码": "code", "成分券名称": "name"})[["code", "name"]].copy()
         else:
             raise ValueError(f"未知股票池: {kind}")
-    rows["code"] = rows["code"].map(canonical_code)
-    return rows.drop_duplicates("code").sort_values("code").reset_index(drop=True)
+    return normalize_universe(rows)
 
 
 def persist_universe(rows, cache_dir):
@@ -184,12 +251,29 @@ def run(config):
     if int(config.get("limit", 0)) < 0 or float(config["request_timeout"]) <= 0 or int(config["retries"]) < 0 or float(config["pause_seconds"]) < 0:
         raise ValueError("limit/retries/pause 不可为负，request_timeout 必须为正")
     save_json(STATUS, {"state": "running", "stage": "loading_universe", "pid": os.getpid(), "started_at": now.isoformat(),
-                       "request": {"start": start, "end": end, "adjust": adjust}, "stocks": []})
-    rows = load_universe(config)
-    if rows.empty:
-        raise ValueError("股票池为空")
+                       "request": {"start": start, "end": end, "adjust": adjust}, "stocks": [],
+                       "universe_source": "pending"})
+    try:
+        if config["universe"] == "all_a":
+            rows, universe_meta = load_all_a_universe(config)
+            persist = universe_meta["source"] == "online"
+        else:
+            rows, universe_meta = load_universe(config), {"source": "online", "attempts": 1}
+            persist = True
+        if rows.empty:
+            raise ValueError("股票池为空")
+    except Exception as error:
+        report = read_status()
+        report.update(state="failed", stage="loading_universe", error=str(error)[:500])
+        save_json(STATUS, report)
+        raise
     universe_count = len(rows)
-    persist_universe(rows, CACHE_DIR)
+    persistence_warning = None
+    if persist:
+        try:
+            persist_universe(rows, CACHE_DIR)
+        except (OSError, sqlite3.Error) as error:
+            persistence_warning = f"本次股票目录未能写入本地缓存，但日线仍将继续更新：{error}"
     limit = int(config.get("limit", 0))
     if 0 < limit < len(rows):
         rows = rows.iloc[np.linspace(0, len(rows) - 1, limit).round().astype(int)]
@@ -213,8 +297,12 @@ def run(config):
             except (OSError, ValueError, KeyError):
                 continue
     cache = DailyCache()
-    report = {"state": "running", "pid": os.getpid(), "started_at": now.isoformat(), "request": identity,
+    report = {"state": "running", "stage": "downloading", "pid": os.getpid(), "started_at": now.isoformat(), "request": identity,
               "cache_dir": str(CACHE_DIR.resolve()), "universe": config["universe"],
+              "universe_source": universe_meta.get("source", "unknown"),
+              "universe_attempts": universe_meta.get("attempts", 1),
+              "universe_warning": universe_meta.get("warning"),
+              "universe_persist_warning": persistence_warning,
               "universe_size": universe_count, "requested_stocks": len(rows), "completed": 0,
               "successful": 0, "failed": 0, "total_rows": 0, "resumed": 0,
               "stocks": [], "limitations": [

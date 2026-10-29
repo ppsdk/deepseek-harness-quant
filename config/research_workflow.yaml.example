@@ -36,16 +36,32 @@ signals:
   presets:
     ma_cross:
       label: 均线金叉入场、死叉退出
+      parameters:
+        fast: {label: 短均线周期, type: number, default: 5, min: 2, max: 1000, step: 1}
+        slow: {label: 长均线周期, type: number, default: 20, min: 2, max: 1000, step: 1}
+      entry_template: 'CROSS(MA(close, {fast}), MA(close, {slow}))'
+      exit_template: 'CROSS(MA(close, {slow}), MA(close, {fast}))'
       entry: 'CROSS(MA(close, 5), MA(close, 20))'
       exit: 'CROSS(MA(close, 20), MA(close, 5))'
       note: 仅示例；候选名单由你先筛选，金叉不保证上涨。
     rsi_recover:
       label: RSI从低位回升、跌回50退出
+      parameters:
+        period: {label: RSI周期, type: number, default: 14, min: 2, max: 1000, step: 1}
+        entry_level: {label: 入场阈值, type: number, default: 30, min: 0, max: 100, step: 1}
+        exit_level: {label: 退出阈值, type: number, default: 50, min: 0, max: 100, step: 1}
+      entry_template: 'CROSS(RSI(close, {period}), {entry_level})'
+      exit_template: 'CROSS({exit_level}, RSI(close, {period}))'
       entry: 'CROSS(RSI(close, 14), 30)'
       exit: 'CROSS(50, RSI(close, 14))'
       note: 使用收盘确认信号，下一交易日才可尝试交易。
     trend:
       label: 突破前20日高点、跌破20日均线退出
+      parameters:
+        lookback: {label: 突破观察周期, type: number, default: 20, min: 2, max: 1000, step: 1}
+        exit_period: {label: 退出均线周期, type: number, default: 20, min: 2, max: 1000, step: 1}
+      entry_template: 'CROSS(close, REF(ts_max(high, {lookback}), 1))'
+      exit_template: 'CROSS(MA(close, {exit_period}), close)'
       entry: 'CROSS(close, REF(ts_max(high, 20), 1))'
       exit: 'CROSS(MA(close, 20), close)'
       note: 比较此前已完成的高点，未使用当天未来价格。

@@ -1,0 +1,85 @@
+base_config: mainboard_repair_v3
+output_dir: output/strategy_research/mainboard_ml_frozen_v2
+features:
+- price_percentile_60
+- drawdown_60
+- price_vs_high_60
+- clv_20
+- o2c_20
+- obv_momentum_20
+- cmf_20
+- mfi_14
+- turnover_shrink_20
+- turnover_acceleration_5
+- amihud_illiquidity_20
+- turn_volatility_60
+- lowvol_60
+- downside_realized_vol_20
+- max_daily_return_20
+- research_gap_risk
+- intraday_range_20
+- turn_20d
+- roc_20
+- roc_60
+- bias_20
+- bias_60
+- adx_14
+- research_trend_efficiency
+- price_pressure_20
+- overnight_gap_20
+- return_skew_20
+- volatility_20
+- momentum_3m
+- momentum_6m
+normalization: rank
+risk_pool: balanced
+entry_rule: ma20_repair
+horizon: 20
+max_training_samples: 100000
+alpha: 10.0
+arms:
+  pca_random_forest:
+    scaling: standard
+    correlation_filter: greedy
+    max_abs_correlation: 0.5
+    min_features: 3
+    reduction: pca
+    component_mode: variance
+    variance_ratio: 0.9
+    model: random_forest
+  pca_hist_gradient_boosting:
+    scaling: standard
+    correlation_filter: greedy
+    max_abs_correlation: 0.5
+    min_features: 3
+    reduction: pca
+    component_mode: variance
+    variance_ratio: 0.9
+    model: hist_gradient_boosting
+execution_variant:
+  id: frozen_ten_day_event
+  label: 固定发现期模型，至少十日均线事件八成仓
+  trade_mode: event
+  rebalance_days: 10
+  min_trade_interval_days: 10
+  max_traded_codes_per_day: 5
+  topn: 5
+  target_exposure_pct: 80
+  selection_policy: stable_diverse
+design_note: 两种模型预先配置，无验证期调参。第一轮训练2019-2022；第二轮扩展训练2019-2024；2025不加入任何训练、归一化拟合、PCA拟合或模型选择。既有数据曾被查看，仍是历史隔离回放。
+  输入使用预定义全30个量价候选，不使用跨窗口IC稳定通过状态筛选，去冗余仅在本轮发现期拟合。
+rounds:
+- id: round_1
+  discovery:
+    start: '2019-01-01'
+    end: '2022-12-31'
+  validation:
+    start: '2023-01-01'
+    end: '2024-12-31'
+- id: round_2_extended
+  discovery:
+    start: '2019-01-01'
+    end: '2024-12-31'
+  validation:
+    start: '2025-01-01'
+    end: '2025-12-31'

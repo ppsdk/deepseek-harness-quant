@@ -1,0 +1,74 @@
+studies:
+  multiroute:
+    config: multiroute_strategy_research
+    routes: [matched_ml]
+    output_subdir: trade_replay
+  extratrees_long_cycle:
+    config: extratrees_long_cycle
+    routes: [matched_ml]
+    output_subdir: trade_replay
+candidate_limit: 20
+round_labels:
+  round_1: 第一轮固定模型
+  round_2: 第二轮固定模型
+  round_fixed_2020: 2020年末固定模型 · 长周期
+  round_annual_expanding: 每年扩展训练 · 长周期
+page_size: 20
+title: 逐日交易复盘
+note: 复盘来自已冻结模型分数和原始成交账本；不重新训练、不重新回测。点击净值图或选择日期查看。
+signal_note: 候选排名使用成交日前最近收盘信息；延期订单以逐笔成交记录的原信号日为准。模型分数是未来收益截面排名的预测值，不是上涨概率。
+holdings_note: 持仓份额由实际成交逐笔重建，收盘市值使用本轮冻结价格快照，并与原账户权益逐日核对。部分增减仓不等于换成新股票。
+factor_note: 展示模型实际输入的当日截面百分位（0至1），先按原研究的全主板资格池计算；不是单个因子的收益贡献。模型排名在本路线共同资格池内比较。
+unavailable_note: 这份历史回测尚未生成模型分数与逐日复盘证据；已有净值、成交明细和K线买卖点仍可查看。
+stale_note: 复盘证据与当前归档不一致，请重新生成对应研究的交易复盘，暂不展示旧证据。
+trigger_labels:
+  rebalance_entry: 普通调仓买入或加仓
+  rebalance_exit: 普通调仓卖出或减仓
+  market_risk_exit: 市场均线门控关闭，紧急退出
+status_labels:
+  cash: 空仓等待
+  holding: 持仓观察
+  regular: 普通调仓成交
+  emergency: 市场风险退出成交
+  mixed: 调仓与风险退出成交
+feature_labels:
+  momentum_short: 短期动量
+  momentum_medium: 跳过近期的中期动量
+  reversal: 短期反转
+  low_volatility: 低波动
+  downside_risk: 低下行风险
+  liquidity: 平均成交额
+  money_flow: 资金流向
+  trend_efficiency: 趋势效率
+  price_location: 低价格区间位置
+  volume_surprise: 低成交量比
+model_labels:
+  extra_trees: ExtraTrees 极端随机树
+  ridge: Ridge 岭回归
+  hist_gradient_boosting: 直方图梯度提升树
+feature_formulas:
+  momentum: '收盘价(t−{skip}) ÷ 收盘价(t−{skip}−{n}) − 1'
+  volatility: '最近{n}日收盘收益率的标准差'
+  downside: '最近{n}日负收益平方均值的平方根（正收益按0计）'
+  amount: '最近{n}日平均成交金额'
+  money_flow: '最近{n}日收盘区间位置加权成交量之和 ÷ 同期成交量之和'
+  efficiency: '最近{n}日价格净变化 ÷ 同期每日价格变化绝对值之和'
+  price_location: '(收盘−最近{n}日最低收盘) ÷ (最近{n}日最高收盘−最低收盘)'
+  volume_ratio: '当日成交量 ÷ 最近{n}日平均成交量'
+protocol_descriptions:
+  fixed_origin: '仅使用{discovery_start}至{discovery_end}的发现期训练一次，然后冻结模型、标准化和PCA，持续回放{validation_start}至{validation_end}。沿用后期研究提出的固定规则，未在本轮按回放收益重新选择模型或参数，属于事后历史诊断。'
+  annual_expanding: '从{validation_start}至{validation_end}逐年回放；每年仅用截至前一年末的扩展历史重新拟合模型、标准化与PCA。预测年度的数据不进入该年度训练，过去已结束年度可进入后续训练；账户跨年连续，不强制清仓。规则来自后期研究，属于事后历史诊断。'
+  annual_preprocessing: '每个年度分别在其训练期内去相关、标准化和PCA，累计解释方差至少90%；维数与保留因子可随训练期变化。下方按日期列出该日实际使用的训练截止与标签终点，不能用最后一次训练窗口概括整个回放。'
+description:
+  overview: 先由冻结的机器学习模型给共同资格池股票排序，再由沪深300均线控制是否允许持有股票。个股买卖依据模型排序与持仓缓冲，均线择时针对指数。
+  universe: '本轮代码池{stocks}只，要求历史行情至少{history}个交易日，近{liquidity_window}日平均成交额至少{amount}元，并要求相关历史估值字段可用且为正；每日合格股票数量会变化。'
+  training: '发现期{discovery_start}至{discovery_end}；内层训练截止{inner_end}，在{selection_start}至{selection_end}选择模型、调仓间隔和择时方式，再用发现期重拟合并冻结。外层验证为{validation_start}至{validation_end}。'
+  target: '使用收盘特征预测从下一交易日开盘到其后第{horizon}个交易日开盘的收益截面排名，标签居中到-0.5至0.5。分数用于排序，不代表预期收益率或上涨概率。'
+  preprocessing: '输入{input_dimension}个技术特征，训练期去相关后保留{selected_dimension}个，标准化后PCA降至{output_dimension}维，累计解释方差{variance}。去相关、标准化与PCA只拟合训练数据。'
+  selection: '最多持有{topn}只，调仓时单只目标仓位上限{weight}%。旧持仓若仍在前{retain}名内优先保留，其余比较时旧持仓分数增加{margin}作为缓冲，减少小幅排名变化造成的换股。'
+  timing: '沪深300收盘高于MA{slow}，且MA{fast}高于MA{slow}，连续{confirm}日确认后允许持仓。条件关闭时，下一交易日开盘尝试退出；即使普通交易间隔未满，也允许紧急清仓。'
+  execution: '从该回放起点按每{cadence}个交易日检查普通调仓，且普通成交距上一成交至少{interval}个交易日；空仓后重新进入也受此约束。仓位偏差不足{threshold}个百分点不微调。信号在收盘形成，下一交易日开盘加滑点执行，停牌或一字板可能无法成交。'
+  costs: '初始资金{capital}元；佣金{commission}bp、最低{minimum}元；卖出印花税固定{tax}bp；滑点{slippage}bp。现金不计息；前复权、小数份额，尚未模拟100股整手与盘口容量。'
+  exits: '本配置未开启额外的个股固定止损、止盈和移动止损。普通离场由排序与仓位调整产生，市场风险退出由指数均线门控产生。'
+  limits: '已查看的历史区间属于时间隔离回放，不能当成新盲测。股票池存在幸存者偏差，历史退市/ST不完整，估值版本未审计。一字板用成交日完整日线作保守事后筛查。PCA解释方差不是收益预测准确率。'
+  reuse: '后一轮允许将前一轮验证期转为发现期；各轮模型必须分别评价，不能把两轮验证收益拼成同一个固定模型的曲线。'

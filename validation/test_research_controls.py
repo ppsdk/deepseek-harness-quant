@@ -59,7 +59,7 @@ class IndicatorControlsTest(unittest.TestCase):
 
 class PortfolioControlsTest(unittest.TestCase):
     def setUp(self):
-        self.days = pd.bdate_range('2024-01-01', periods=9).strftime('%Y-%m-%d').tolist()
+        self.days = pd.bdate_range('2024-01-01', periods=20).strftime('%Y-%m-%d').tolist()
         self.codes = ['000001.SZ', '000002.SZ']
         self.p = {f: pd.DataFrame(v, index=self.days, columns=self.codes)
                   for f, v in dict(open=10., high=11., low=9., close=10.,
@@ -101,29 +101,29 @@ class PortfolioControlsTest(unittest.TestCase):
 
     def test_stop_uses_prior_close_then_gap_open_without_rebalancing_other_stock(self):
         self.p['close'].at[self.days[2], self.codes[0]] = 8.
-        self.p['open'].at[self.days[3], self.codes[0]] = 7.
+        self.p['open'].at[self.days[6], self.codes[0]] = 7.
         r = self.simulate(stop_loss_pct=10)
         sells = [t for t in r['trades'] if t['side']=='sell']
         self.assertEqual(len(sells), 1)
         self.assertEqual(sells[0]['trigger'], 'stop_loss')
         self.assertEqual(sells[0]['signal_date'], self.days[2])
-        self.assertEqual(sells[0]['date'], self.days[3])
+        self.assertEqual(sells[0]['date'], self.days[6])
         self.assertEqual(sells[0]['fill_price'], 7.)
         self.assertEqual(len([t for t in r['trades'] if t['code']==self.codes[1]]), 1)
 
     def test_blocked_stop_remains_pending_until_next_tradable_open(self):
         self.p['close'].at[self.days[2], self.codes[0]] = 8.
         for f in ('open','high','low','close'):
-            self.p[f].at[self.days[3], self.codes[0]] = 7.
-        self.p['open'].at[self.days[4], self.codes[0]] = 6.
+            self.p[f].at[self.days[6], self.codes[0]] = 7.
+        self.p['open'].at[self.days[7], self.codes[0]] = 6.
         r = self.simulate(stop_loss_pct=10)
         sell = [t for t in r['trades'] if t['side']=='sell'][0]
-        self.assertEqual(sell['date'], self.days[4])
+        self.assertEqual(sell['date'], self.days[7])
         self.assertEqual(sell['signal_date'], self.days[2])
         self.assertEqual(sell['fill_price'], 6.)
         self.assertTrue(any(t['trigger']=='stop_loss' for t in r['rejections']))
 
-    def test_take_profit_trailing_and_max_holding_trigger_next_day(self):
+    def test_take_profit_trailing_and_max_holding_trigger_at_eligible_open(self):
         for key, price, trigger in [('take_profit_pct', 12., 'take_profit'),
                                     ('trailing_stop_pct', 8., 'trailing_stop'),
                                     ('max_holding_days', 10., 'max_holding_days')]:
@@ -131,16 +131,16 @@ class PortfolioControlsTest(unittest.TestCase):
                 self.p['close'].at[self.days[2], self.codes[0]] = price
                 r = self.simulate(**{key: 2 if key=='max_holding_days' else 10})
                 sell = [t for t in r['trades'] if t['side']=='sell' and t['code']==self.codes[0]][0]
-                self.assertEqual(sell['date'], self.days[3])
+                self.assertEqual(sell['date'], self.days[6])
                 self.assertEqual(sell['trigger'], trigger)
 
     def test_cooldown_prevents_immediate_repurchase(self):
         self.p['close'].at[self.days[2], self.codes[0]] = 8.
-        r = self.simulate(stop_loss_pct=10, rebalance_days=1, risk_cooldown_days=2)
+        r = self.simulate(stop_loss_pct=10, rebalance_days=1, risk_cooldown_days=7)
         sold = next(t for t in r['trades'] if t['trigger']=='stop_loss')
         later = [t for t in r['trades'] if t['code']==sold['code'] and t['side']=='buy' and t['date']>sold['date']]
         self.assertTrue(later)
-        self.assertGreaterEqual(self.days.index(later[0]['date'])-self.days.index(sold['date']), 3)
+        self.assertGreaterEqual(self.days.index(later[0]['date'])-self.days.index(sold['date']), 8)
 
     def test_accounting_cost_basis_and_future_do_not_change_past(self):
         p = dict(commission_bps=10, min_commission=5, stamp_tax_bps=5,

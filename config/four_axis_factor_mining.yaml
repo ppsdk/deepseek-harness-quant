@@ -1,0 +1,247 @@
+as_of: '2026-10-28'
+snapshot_dir: output/strategy_research/mainboard_low_turnover
+output_dir: output/strategy_research/four_axis_v1
+data_start: '2017-11-01'
+data_end: '2026-10-23'
+execution:
+  timing_index: 000300.SH
+universe:
+  code_pattern: ^(60[0135]\d{3}\.SH|00[0-3]\d{3}\.SZ)$
+  min_history_days: 60
+  liquidity_window: 20
+  min_average_amount: 20000000
+  exclude_st: true
+research_windows:
+  full:
+    start: '2019-01-01'
+    end: '2026-10-23'
+ic:
+  horizons:
+  - 5
+  - 20
+  - 60
+  min_stocks: 50
+  sample_every_days: 5
+  annual_periods: 252
+factor_cache_dir: output/strategy_research/mainboard_repair_v3_explore/factor_scan/cache
+valuation_source:
+  db: data/cache/factor_mining_valuation.db
+  sample_stocks: 512
+  timeout_seconds: 12
+  pause_seconds: 0.35
+  provider: eastmoney
+  source: eastmoney_RPT_VALUEANALYSIS_DET
+  workers: 6
+  submit_interval_seconds: 0.5
+effectiveness:
+  primary_horizon: 20
+  min_abs_rank_ic: 0.015
+  min_coverage: 0.5
+  min_year_direction_fraction: 0.6
+  min_observations: 100
+  fdr: 0.1
+  min_same_direction_horizons: 2
+  max_representative_abs_corr: 0.5
+categories:
+  momentum:
+    roc:
+      source_factor: roc_20
+      label: 区间收益动量
+    bias:
+      source_factor: bias_60
+      label: 均线乖离动量
+    efficiency:
+      source_factor: research_trend_efficiency
+      label: 趋势路径效率
+    percentile:
+      source_factor: price_percentile_60
+      label: 价格区间位置
+    intraday:
+      source_factor: o2c_20
+      label: 日内收益动量
+    pressure:
+      source_factor: price_pressure_20
+      label: 价格压力动量
+    obv:
+      source_factor: obv_momentum_20
+      label: OBV量价动量
+    risk_adjusted:
+      operation: risk_adjusted_momentum
+      label: 风险调整动量
+      params:
+        n: 60
+    weighted:
+      operation: volume_weighted_return
+      label: 成交量加权收益
+      params:
+        n: 20
+  volatility:
+    realized:
+      source_factor: lowvol_60
+      label: 收益实现波动率
+    downside:
+      source_factor: downside_realized_vol_20
+      label: 下行实现波动
+    gap:
+      source_factor: research_gap_risk
+      label: 隔夜跳空风险
+    range:
+      source_factor: intraday_range_20
+      label: 日内振幅
+    maximum:
+      source_factor: max_daily_return_20
+      label: 极端单日收益
+    skewness:
+      source_factor: return_skew_20
+      label: 收益偏度
+    parkinson:
+      operation: parkinson_volatility
+      label: Parkinson高低价波动
+      params:
+        n: 20
+    garman:
+      operation: garman_klass
+      label: Garman-Klass波动
+      params:
+        n: 20
+    volvol:
+      operation: volatility_of_volatility
+      label: 波动率的不稳定程度
+      params:
+        n: 20
+        m: 60
+    kurtosis:
+      operation: return_kurtosis
+      label: 收益峰度
+      params:
+        n: 60
+  liquidity:
+    turn_mean:
+      source_factor: turn_20d
+      label: 平均换手率
+    turn_variance:
+      source_factor: turn_volatility_60
+      label: 换手率波动
+    turn_accel:
+      source_factor: turnover_acceleration_5
+      label: 换手率加速度
+    turn_shrink:
+      source_factor: turnover_shrink_20
+      label: 换手率收缩
+    amihud:
+      source_factor: amihud_illiquidity_20
+      label: Amihud非流动性
+    amount_cv:
+      operation: amount_cv
+      label: 成交额不稳定程度
+      params:
+        n: 20
+    amount:
+      operation: log_dollar_volume
+      label: 对数成交额
+      params:
+        n: 20
+    roll:
+      operation: roll_spread
+      label: Roll价差代理
+      params:
+        n: 20
+    zeros:
+      operation: zero_return_fraction
+      label: 零收益交易日比例
+      params:
+        n: 20
+    impact:
+      operation: turn_price_impact
+      label: 单位换手价格冲击
+      params:
+        n: 20
+  valuation:
+    ep:
+      operation: yield
+      label: 盈利收益率E/P
+      params:
+        field: pe
+    bp:
+      operation: yield
+      label: 账面价值收益率B/P
+      params:
+        field: pb
+    sp:
+      operation: yield
+      label: 销售收益率S/P
+      params:
+        field: ps
+    cfp:
+      operation: yield
+      label: 经营现金流收益率OCF/P
+      params:
+        field: pcf
+    relative_pe:
+      operation: relative_valuation
+      label: 历史相对PE估值
+      params:
+        field: pe
+        n: 252
+    relative_pb:
+      operation: relative_valuation
+      label: 历史相对PB估值
+      params:
+        field: pb
+        n: 252
+    relative_ps:
+      operation: relative_valuation
+      label: 历史相对PS估值
+      params:
+        field: ps
+        n: 252
+    value_blend:
+      operation: value_composite
+      label: 盈利与账面复合价值
+      params:
+        fields:
+        - pe
+        - pb
+    broad_value:
+      operation: value_composite
+      label: 盈利账面销售复合价值
+      params:
+        fields:
+        - pe
+        - pb
+        - ps
+    change:
+      operation: valuation_change
+      label: 估值修复变化
+      params:
+        field: pe
+        n: 60
+    dispersion:
+      operation: valuation_dispersion
+      label: 多口径估值分歧
+      params:
+        fields:
+        - pe
+        - pb
+        - ps
+    quality_spread:
+      operation: earnings_book_spread
+      label: 盈利与账面估值差
+      params: {}
+    peg:
+      operation: yield
+      label: 正增长估值收益率1/PEG
+      params:
+        field: peg
+        positive_only: true
+category_labels:
+  momentum: 动量
+  volatility: 波动率
+  liquidity: 流动性
+  valuation: 估值
+minimum_per_category: 5
+correlation:
+  sample_every_days: 5
+  max_samples: 100000
+  min_pair_observations: 500
+  pca_explained_variance: 0.9

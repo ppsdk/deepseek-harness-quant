@@ -1,0 +1,23 @@
+# Execution research only: reuse each round's previously frozen factor shortlist.
+output_subdir: event_trading
+max_search_combinations_per_round: 20
+execution:
+  trade_mode: event
+  min_trade_interval_days: 5
+  max_traded_codes_per_day: 5
+  entry_ma_fast: 20
+  entry_ma_slow: 60
+  exit_ma_period: 20
+  ma_confirm_days: 2
+  rebalance_days: 20 # retained for old archive schema; ignored by event mode
+  target_exposure_pct: 100
+  timing_rule: index_strong_risk_ma
+  timing_execution: daily_exit
+  risk_cooldown_days: 5
+variants:
+  - {id: ma_weekly_event, label: 均线触发，至少间隔5个交易日}
+  - {id: ma_monthly_event, label: 均线触发，至少间隔20个交易日, min_trade_interval_days: 20}
+  - {id: ma_slow_exit, label: 只将退出均线改为60日, exit_ma_period: 60}
+  - {id: ma_defensive_exposure, label: 只将目标仓位降至60%, target_exposure_pct: 60}
+emergency_exit_allowed: true
+validation_is_fresh_blind: false

@@ -1,0 +1,36 @@
+# Full remote endpoints. Set these environment variables on the backend host.
+# No credentials are exposed by the browser configuration API.
+provider: public
+cache_seconds: 45
+cache_entries: 64
+analysis_url_env: DSHQUANT_MARKET_ANALYSIS_URL
+chart_url_env: DSHQUANT_MARKET_CHART_URL
+token_env: DSHQUANT_MARKET_TOKEN
+analysis_url: ''
+chart_url: ''
+timeout_seconds: 20
+max_response_bytes: 12000000
+trust_env: true
+capabilities: {refresh: true, ai: false}
+public:
+  chart_indicator_mode: workbench # 云端K线 + 研究台指标计算；大盘统计仍不本地计算。
+  quote_url: https://qt.gtimg.cn/q=
+  kline_url: https://quotes.sina.cn/cn/api/jsonp_v2.php/=/CN_MarketDataService.getKLineData
+  quote_encoding: gbk
+  quote_fields: {price: 3, timestamp: 30, change_pct: 32}
+  ma_periods: [20, 60]
+  scales: {day: 240, week: 1200, month: 7200}
+  max_bars: 1970
+  ma_per_request: 2
+  cloud_operations: [sma]
+  columns:
+    - {key: name, label: 指数, format: text}
+    - {key: close, label: 最新价, format: number}
+    - {key: daily_return, label: 当日涨跌, format: percent}
+    - {key: ma20, label: 云端MA20, format: number}
+    - {key: ma60, label: 云端MA60, format: number}
+    - {key: quote_time, label: 报价时间, format: text}
+    - {key: ma_date, label: 均线日期, format: text}
+  notes:
+    - 报价直接来自腾讯财经，MA直接来自新浪财经接口；仅解析字段和换算展示单位，不从本地日线计算。
+    - 免费接口未直接提供的全市场宽度、规则评分、5/20/60日收益等不作本地补算。

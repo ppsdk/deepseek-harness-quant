@@ -37,6 +37,8 @@ def research_config():
     pools=list_pools()['pools']
     cfg['stock_pools']=pools
     cfg['chart_settings']=services['chart']
+    cfg['stock_selection_controls']=(read_config('mainboard_research').get('stock_selection_policies',{})
+                                     if (BASE/'config/mainboard_research.yaml.example').exists() else {})
     pattern_config=read_config('research_patterns')
     cfg['pattern_configuration']=pattern_config['families']
     cfg['chart_settings']['pattern_presets']=pattern_config['chart_presets']
@@ -118,6 +120,8 @@ def validate_params(values, cfg):
                 raise ValueError(f'{key} 日期格式应为 YYYY-MM-DD。') from None
     if p['start'] > p['end']:
         raise ValueError('开始日期不能晚于结束日期。')
+    if p.get('trade_mode')=='event' and p['entry_ma_fast']>=p['entry_ma_slow']:
+        raise ValueError('入场短均线必须短于长均线。')
     from backtest.research_pools import apply_pool
     if p.get('signal_plan_id'):
         from backtest.research_signals import plans
@@ -148,7 +152,8 @@ def load_panels(p, cfg, definitions=None):
     extra_days,pattern_families=pattern_requirements([f['name'] for f in wanted],definitions)
     from factors.research_controls import warmup_days
     history_days=max(cfg['warmup_calendar_days'],extra_days,warmup_days(p.get('indicator_params',{})),
-                     int(p.get('allocation_lookback',20)*2))
+                     int(p.get('allocation_lookback',20)*2),
+                     int(max(p.get('entry_ma_slow',0),p.get('exit_ma_period',0))*2) if p.get('trade_mode')=='event' else 0)
     warmup = (date.fromisoformat(p['start']) - timedelta(days=history_days)).isoformat()
     available = set()
     for db in [cache.db_path, *cache._inc_paths()]:
@@ -215,6 +220,8 @@ def load_panels(p, cfg, definitions=None):
     from factors.research_controls import apply as apply_indicators
     apply_indicators(panels,p.get('indicator_params',{}),definitions)
     attach(panels,definitions,signal_plan)
+    from backtest.research_cadence import attach as attach_cadence
+    attach_cadence(panels,p)
     return panels, {'available_stocks': len(available), 'selected_codes': codes,
                     'warmup_calendar_days':history_days,
                     'stock_pool': get_pool(p['pool_id']) if p.get('pool_id') else None,
@@ -345,7 +352,8 @@ def build_result(panels,data,scores,p,cfg,meta,started,archive=True):
         warnings.extend(cfg['alpha101_source']['notes'])
     if any(f['name'].startswith('fund_') for f in meta['factor_list']):
         warnings.append('财务数据仅从记录的可用日期起使用；新抓报表从抓取日的次日起生效，无法据此检验更早年份。历史 CSV 的版本和可用日期由提供者保证。')
-    if p.get('timing_rule','none')!='none':warnings.append(('市场风险每日检查，未满足时次日开盘尝试退出；恢复后只在换股日重新买入。' if p.get('timing_execution')=='daily_exit' else '市场择时只在换股日检查，次日开盘尝试成交。')+'无法成交时保留持仓并记录原因；指数缺值时不生成持有信号。')
+    if p.get('timing_rule','none')!='none':warnings.append(('市场风险每日检查，未满足时次日开盘尝试退出；恢复后按普通交易频率和入场条件重新买入。' if p.get('timing_execution')=='daily_exit' else '市场择时只在换股日检查，次日开盘尝试成交。')+'无法成交时保留持仓并记录原因；指数缺值时不生成持有信号。')
+    if p.get('trade_mode')=='event':warnings.append('均线条件触发交易，不按固定间隔强制调仓；普通交易距离上次成交至少 '+str(p['min_trade_interval_days'])+' 个交易日，紧急市场风险退出允许例外；买卖合计每天最多涉及 '+str(p['max_traded_codes_per_day'])+' 只股票。')
     warnings.append('一字行情和停牌过滤使用成交日完整日线作保守事后筛查；它不是只依赖开盘时已知信息的真实撮合。')
     warnings.append(cfg.get('position_note',''))
     if panels.get('_signal_plan'):

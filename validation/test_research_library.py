@@ -98,7 +98,7 @@ class IndicatorTests(unittest.TestCase):
                 with self.subTest(key=key):
                     rng=np.random.default_rng(len(key))
                     inputs=dict(p,**{f:pd.DataFrame(rng.uniform(.5,2,p['close'].shape),index=p['close'].index,columns=p['close'].columns)
-                                     for f in spec.get('requires',[]) if f.startswith('fund:')})
+                                     for f in spec.get('requires',[]) if f.startswith(('fund:', 'valuation:'))})
                     result=calculate(spec,inputs)
                     self.assertEqual(result.shape,p['close'].shape)
                     self.assertFalse(np.isinf(result.to_numpy()).any())

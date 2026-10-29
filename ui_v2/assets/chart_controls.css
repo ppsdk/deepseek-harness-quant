@@ -1,0 +1,32 @@
+/* Research chart configuration: one compact entry with optional detail panels. */
+.chart-config{border:1px solid #343846;border-radius:10px;background:#14151b;margin:16px 0;padding:14px 16px}
+.chart-config [hidden]{display:none!important}
+.chart-config-toolbar{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.chart-config-toolbar label{display:flex;align-items:center;gap:12px;font-size:13px;color:#b8bfce}
+.chart-config select,.chart-config-search input{background:#191b23;border:1px solid #3a4050;border-radius:6px;color:#e4e8f1;padding:8px 10px;max-width:100%;box-sizing:border-box}
+.chart-config-toolbar select{width:220px}
+#chart-config-toggle{display:flex;gap:10px;align-items:center}
+#chart-config-count{color:#a8b3c6;font-size:12px;font-weight:400}
+.chart-config-chevron{display:inline-block;transition:transform .15s}
+[aria-expanded=true] .chart-config-chevron{transform:rotate(180deg)}
+.chart-selected{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chart-selected-chip,.chart-overlay-link{display:inline-flex;align-items:center;gap:8px;max-width:100%;background:#24233a;color:#d6cffb;border:1px solid #494264;border-radius:6px;padding:5px 9px;font-size:12px;text-align:left;cursor:pointer}
+.chart-selected-chip span{color:#b5accf}.chart-selected-chip:hover{border-color:#a895f5}.chart-overlay-link{background:#1a2434;border-color:#354966;color:#b8d6ff}
+.chart-config-tabs{display:flex;gap:20px;border-bottom:1px solid #333846;margin:16px 0 12px}
+.chart-config-tabs button{background:none;border:0;border-bottom:2px solid transparent;color:#a9b2c3;padding:10px 2px;cursor:pointer;font-size:13px}
+.chart-config-tabs button[aria-selected=true]{color:#c4b5fd;border-bottom-color:#a78bfa}
+.chart-config-search{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.chart-config-search label{display:flex;align-items:center;gap:10px;color:#aab4c1;font-size:12px}.chart-config-search input{width:230px}
+.chart-config #chart-indicators{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,240px),1fr));gap:8px;max-height:280px;overflow:auto;margin:12px 0;padding:2px}
+.chart-config #chart-indicators label{display:flex;gap:8px;align-items:flex-start;white-space:normal;line-height:1.6;border:1px solid #333846;border-radius:6px;padding:8px;color:#bdc4d2;cursor:pointer}
+.chart-config #chart-indicators label:has(input:checked){border-color:#7462b6;background:#262139;color:#ded6ff}
+.chart-config input[type=checkbox]{accent-color:#a78bfa;flex-shrink:0;margin:3px 0 0}
+.chart-config-settings{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+.chart-config-settings>section{min-width:0}.chart-config-settings>section+section{border-left:1px solid #333846;padding-left:20px}
+.chart-config-settings h3{font-size:13px;color:#d9ddec;margin:8px 0}.chart-config-settings h3 span{color:#a8b3c6;font-size:12px;font-weight:400;margin-left:6px}
+.chart-config .indicator-editor-embedded{border:0;padding:0;margin:0}.chart-config .studio-note{margin:8px 0}.chart-config .studio-note:empty{display:none}
+.chart-config .indicator-editor-groups{grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr))}
+.chart-config .studio-controls label{min-width:0}.chart-config .studio-controls select{width:100%}
+.chart-config button:focus-visible,.chart-config input:focus-visible,.chart-config select:focus-visible{outline:2px solid #bba4ff;outline-offset:3px}
+@media(max-width:800px){.chart-config-settings{grid-template-columns:1fr}.chart-config-settings>section+section{border-left:0;border-top:1px solid #333846;padding:16px 0 0}}
+@media(max-width:500px){.chart-config{padding:12px}.chart-config-toolbar{align-items:stretch}.chart-config-toolbar label{width:100%}.chart-config-toolbar select{flex:1;min-width:0}.chart-config-search input{width:100%;min-width:0}.chart-config-search label{width:100%}.chart-config-search .status-note{margin:0}#chart-config-toggle{justify-content:space-between;width:100%}}

@@ -1,7 +1,9 @@
 """Offline checks for AKShare units, nullable ST state, and download auditing."""
 import json
 import os
+from contextlib import closing
 from pathlib import Path
+import sqlite3
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -120,6 +122,58 @@ class AksharePipelineTest(unittest.TestCase):
                     second = akshare_loader.run(config)
                     fetch.assert_not_called()
                 self.assertTrue(second["stocks"][0]["resumed"])
+
+    def test_catalogue_reset_retries_then_uses_local_sqlite(self):
+        with tempfile.TemporaryDirectory() as home:
+            cache_dir = Path(home)
+            with closing(sqlite3.connect(cache_dir / "stock_basic.db")) as con, con:
+                con.execute("CREATE TABLE stock_basic (code TEXT PRIMARY KEY, name TEXT)")
+                con.execute("INSERT INTO stock_basic VALUES ('600519.SH', 'fixture')")
+            config = dict(universe="all_a", universe_retries=1, universe_retry_seconds=0)
+            with patch.object(akshare_loader, "CACHE_DIR", cache_dir),                  patch.object(akshare_loader, "load_universe", side_effect=ConnectionResetError("fixture reset")) as online:
+                rows, metadata = akshare_loader.load_all_a_universe(config)
+            self.assertEqual(online.call_count, 2)
+            self.assertEqual(rows["code"].tolist(), ["600519.SH"])
+            self.assertEqual(metadata["source"], "local_cache")
+            self.assertEqual(metadata["attempts"], 2)
+            self.assertIn("已沿用本地目录", metadata["warning"])
+
+    def test_catalogue_success_does_not_consult_local_cache(self):
+        frame = pd.DataFrame([{"code": "000001.SZ", "name": "online"}])
+        config = dict(universe="all_a", universe_retries=2, universe_retry_seconds=0)
+        with patch.object(akshare_loader, "load_universe", return_value=frame),              patch.object(akshare_loader, "load_cached_universe") as cached:
+            rows, metadata = akshare_loader.load_all_a_universe(config)
+        cached.assert_not_called()
+        self.assertEqual(rows["code"].tolist(), ["000001.SZ"])
+        self.assertEqual(metadata, {"source": "online", "attempts": 1})
+
+    def test_catalogue_failure_without_local_cache_stops_before_download(self):
+        config = dict(universe="all_a", universe_retries=0, universe_retry_seconds=0)
+        with patch.object(akshare_loader, "load_universe", side_effect=ConnectionResetError("fixture reset")),              patch.object(akshare_loader, "load_cached_universe", return_value=pd.DataFrame(columns=["code", "name"])):
+            with self.assertRaisesRegex(RuntimeError, "日线更新尚未开始"):
+                akshare_loader.load_all_a_universe(config)
+
+    def test_download_continues_from_local_catalogue_after_online_reset(self):
+        frame = self.normalize(self.sina(), "sina")
+        config = load_config()
+        config.update(start="2024-01-01", end="2024-01-31", minimum_rows=2,
+                      backends=["sina"], pause_seconds=0, retries=0,
+                      universe="all_a", universe_retries=0, resume=False)
+        with tempfile.TemporaryDirectory() as home:
+            base = Path(home)
+            cache_dir = base / "cache"
+            cache_dir.mkdir()
+            with closing(sqlite3.connect(cache_dir / "stock_basic.db")) as con, con:
+                con.execute("CREATE TABLE stock_basic (code TEXT PRIMARY KEY, name TEXT)")
+                con.execute("INSERT INTO stock_basic VALUES ('600519.SH', 'fixture')")
+            cache = DailyCache(cache_dir / "bars.db")
+            with patch.object(akshare_loader, "BASE", base),                  patch.object(akshare_loader, "CACHE_DIR", cache_dir),                  patch.object(akshare_loader, "STATUS", base / "status.json"),                  patch.object(akshare_loader, "DailyCache", return_value=cache),                  patch.object(akshare_loader, "load_universe", side_effect=ConnectionResetError("fixture reset")),                  patch.object(akshare_loader, "fetch_daily", return_value=frame):
+                report = akshare_loader.run(config)
+            self.assertEqual(report["state"], "completed")
+            self.assertEqual(report["universe_source"], "local_cache")
+            self.assertEqual(report["successful"], 1)
+            self.assertIn("已沿用本地目录", report["universe_warning"])
+            self.assertIsNotNone(cache.get_daily("600519.SH"))
 
     def test_download_lock_prevents_duplicate_writer_and_releases(self):
         with tempfile.TemporaryDirectory() as home:

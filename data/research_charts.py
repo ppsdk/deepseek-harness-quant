@@ -12,7 +12,16 @@ def aggregate(frame,rule):
     if not rule:return frame.sort_values('date').copy()
     ix=frame.copy();ix.index=pd.to_datetime(ix['date'])
     rows=[]
-    for _,part in ix.resample(rule):
+    # ``ME`` is the explicit month-end alias in newer pandas; older local
+    # runtimes only know ``M``.  Keep the configured meaning while remaining
+    # compatible with both versions.
+    try:
+        grouped=ix.resample(rule)
+        iterator=iter(grouped)
+    except ValueError:
+        grouped=ix.resample('M' if rule=='ME' else rule)
+        iterator=iter(grouped)
+    for _,part in iterator:
         if part.empty:continue
         row={'date':str(part['date'].iloc[-1]),'open':part['open'].iloc[0],
              'high':part['high'].max(),'low':part['low'].min(),'close':part['close'].iloc[-1]}
@@ -66,12 +75,17 @@ def overlay_specs(query,definitions):
     except ValueError:raise ValueError('叠加指标的参数格式不正确。') from None
     limit=int(read_config('research_services')['chart'].get('max_overlays',8))
     if not isinstance(items,list) or len(items)>limit:raise ValueError('一张图最多叠加'+str(limit)+'条参数不同的指标。')
-    fields=read_config('research_controls')['parameter_fields'];out={}
+    from factors.research_controls import catalogue,validate
+    groups=catalogue(definitions);out={}
     for i,item in enumerate(items):
         spec=definitions.get(item.get('base')) if isinstance(item,dict) else None
-        if not spec or spec.get('kind')!='technical' or not spec.get('chart'):raise ValueError('只能叠加图表支持的技术指标。')
-        params=dict(spec.get('params',{}));given=item.get('params') or {}
+        if not spec or spec.get('kind') not in ('technical','pattern') or not spec.get('chart'):raise ValueError('只能叠加支持参数设置的图表指标。')
+        group=next((key for key,value in groups.items() if item['base'] in value['factors']),None)
+        if group is None:raise ValueError('这个指标没有可调整的参数。')
+        fields=groups[group]['fields']
+        params=({key:value['default'] for key,value in fields.items()} if spec.get('kind')=='pattern' else dict(spec.get('params',{})));given=item.get('params') or {}
         if not isinstance(given,dict) or set(given)-set(params):raise ValueError(spec['label']+'没有这些参数。')
+        validate({group:given},definitions)
         for k,v in given.items():
             f=fields.get(k)
             if (f is None or isinstance(v,bool) or not isinstance(v,(int,float)) or not math.isfinite(v)
@@ -79,11 +93,11 @@ def overlay_specs(query,definitions):
                 raise ValueError(spec['label']+'的'+(f['label'] if f else k)+'超出允许范围。')
             params[k]=int(v) if f.get('integer') else float(v)
         if 'fast' in params and 'slow' in params and params['fast']>=params['slow']:raise ValueError('短周期必须小于长周期。')
-        out[item['base']+'#'+str(i+1)]=dict(spec,params=params,label=_overlay_label(spec,params,fields),overlay_of=item['base'])
+        out[item['base']+'#'+str(i+1)]=dict(spec,params=params,label=_overlay_label(dict(spec,params={k:v['default'] for k,v in fields.items()}),params,fields),overlay_of=item['base'])
     return out
 
 
-def chart_data(code,name,query,adjust='qfq',kind='stock',definitions=None,pattern_configuration=None):
+def chart_data(code,name,query,adjust='qfq',kind='stock',definitions=None,pattern_configuration=None,price_history=None):
     settings=read_config('research_services')['chart']
     period=query.get('timeframe',settings['default_timeframe'])
     if period not in settings['timeframes']:raise ValueError('请选择日线、周线或月线。')
@@ -107,6 +121,8 @@ def chart_data(code,name,query,adjust='qfq',kind='stock',definitions=None,patter
         longest=max([v for s in stacked.values() for v in s['params'].values() if isinstance(v,int)]+[0])
         overlay_days=longest*{'day':2,'week':8,'month':35}.get(period,2)
     from factors.research_controls import validate as validate_indicators,apply as apply_indicators,warmup_days,labels
+    for item in stacked.values():
+        if item.get('kind')=='pattern':overlay_days=max(overlay_days,warmup_days({'pattern:'+item['family']:item['params']}))
     snapshot={}
     if query.get('run'):
         from factors.research_manager import experiment_detail
@@ -115,7 +131,8 @@ def chart_data(code,name,query,adjust='qfq',kind='stock',definitions=None,patter
     use_saved_parameters='indicator_params' not in query or parameter_values==snapshot.get('params',{}).get('indicator_params',{})
     extra_days,_=pattern_requirements(requested,definitions)
     warmup=(start-timedelta(days=max(spec['warmup_days'],extra_days,warmup_days(parameter_values),overlay_days))).isoformat()
-    history=DailyCache().get_daily(code,start=warmup,end=end.isoformat(),adjust=adjust)
+    history=(DailyCache().get_daily(code,start=warmup,end=end.isoformat(),adjust=adjust) if price_history is None
+             else price_history[price_history['date'].between(warmup,end.isoformat())].copy())
     bars=[];indicators={}; pattern_events=[]; pattern_segments=[]; pattern_studies=[]
     if history is not None and not history.empty:
         frame=aggregate(history,spec['rule'])
@@ -127,7 +144,8 @@ def chart_data(code,name,query,adjust='qfq',kind='stock',definitions=None,patter
         daily=history.set_index('date')
         daily_panels={f:daily[[f]].rename(columns={f:code}) for f in ('open','high','low','close','volume','amount','turn') if f in daily}
         from factors.research_library import attach_extra_panels
-        for panel in (panels,daily_panels):attach_extra_panels(panel,[code],warmup,end.isoformat(),[{'name':k} for k in requested],DailyCache(),definitions)
+        if price_history is None:
+            for panel in (panels,daily_panels):attach_extra_panels(panel,[code],warmup,end.isoformat(),[{'name':k} for k in requested],DailyCache(),definitions)
         daily_panels['_pattern_config']=pattern_configuration if pattern_configuration is not None else snapshot.get('pattern_configuration',{}) if use_saved_parameters else {}
         for panel in (panels,daily_panels):
             panel['_indicator_specs']=snapshot.get('indicator_configuration',{}) if use_saved_parameters else {}
@@ -136,7 +154,24 @@ def chart_data(code,name,query,adjust='qfq',kind='stock',definitions=None,patter
             item=definitions[key]
             if item.get('kind')=='pattern':
                 from factors.research_patterns import chart_study
-                study=chart_study(item,daily_panels,code,list(visible['date']),start.isoformat(),end.isoformat())
+                study_panels=daily_panels
+                if item.get('overlay_of'):
+                    from copy import deepcopy
+                    study_panels=dict(daily_panels)
+                    study_panels['_pattern_config']=deepcopy(daily_panels.get('_pattern_config') or {})
+                    family=item['family']
+                    family_config=deepcopy(study_panels['_pattern_config'].get(family) or read_config('research_patterns')['families'][family])
+                    family_config['params'].update(item['params']);study_panels['_pattern_config'][family]=family_config
+                    study_panels['_pattern_cache']={};study_panels['_factor_cache']={}
+                study=chart_study(item,study_panels,code,list(visible['date']),start.isoformat(),end.isoformat())
+                if item.get('overlay_of'):
+                    for line in study['lines'].values():
+                        line['label']=item['label']+' · '+line.get('label','')
+                        if line.get('panel'):line['panel']=key+':'+line['panel']
+                    study['lines']={key+':'+name:value for name,value in study['lines'].items()}
+                    for event in study['events']:event['label']=item['label']+' · '+event['label']
+                    for segment in study['segments']:
+                        if segment.get('osc_panel'):segment['osc_panel']=key+':'+segment['osc_panel']
                 indicators.update(study['lines']);pattern_events.extend(study['events']);pattern_segments.extend(study['segments'])
                 pattern_studies.append(dict(id=key,label=item['label'],note=study['note']))
                 continue
@@ -162,13 +197,14 @@ def chart_data(code,name,query,adjust='qfq',kind='stock',definitions=None,patter
                 message='本地缓存'+('前复权' if kind=='stock' else '指数')+spec['label']+'；指标按当前K线周期计算，缺失日期不补齐。')
 
 
-def market(query):
+def market(query,price_history=None):
     cfg=read_config('research_services')['market']
     code=query.get('index') or cfg['default_index']
     if code not in cfg['indices']:raise ValueError('请选择支持的市场指数。')
-    result=chart_data(code,cfg['indices'][code]['name'],query,adjust='none',kind='index')
+    result=chart_data(code,cfg['indices'][code]['name'],query,adjust='none',kind='index',price_history=price_history)
     # These summaries always use daily closes, independent of the chart period.
-    df=DailyCache().get_daily(code,end=query.get('end') or date.today().isoformat(),adjust='none')
+    end=query.get('end') or date.today().isoformat()
+    df=DailyCache().get_daily(code,end=end,adjust='none') if price_history is None else price_history[price_history['date']<=end].copy()
     summary=dict(date=None,close=None,daily_return=None,returns={})
     if df is not None and not df.empty:
         df=df.sort_values('date');c=df['close']

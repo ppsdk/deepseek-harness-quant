@@ -1,0 +1,110 @@
+# Bounded exploratory search. All changing research choices live in this file.
+as_of: '2026-10-27'
+output_dir: output/strategy_research/mainboard_low_turnover
+data_start: '2017-11-01'
+data_end: '2026-10-23'
+resources: {read_chunk_stocks: 100}
+market_indices: [000001.SH, 000300.SH]
+market_windows: [20, 60, 120, 250]
+mined_defensive_factors: [turn_20d, lowvol_60]
+universe:
+  code_pattern: '^(60[0135]\d{3}\.SH|00[0-3]\d{3}\.SZ)$'
+  min_history_days: 252
+  liquidity_window: 20
+  min_average_amount: 20000000
+  exclude_st: true
+periods:
+  observation: {start: '2026-01-01', end: '2026-10-23'}
+  full: {start: '2019-01-01', end: '2026-10-23'}
+rounds:
+  - id: round_1
+    discovery: {start: '2019-01-01', end: '2022-12-31'}
+    validation: {start: '2023-01-01', end: '2024-12-31'}
+  - id: round_2
+    discovery: {start: '2023-01-01', end: '2024-12-31'}
+    validation: {start: '2025-01-01', end: '2025-12-31'}
+targets: {annual_return: 0.20, excess_annual_return: 0.20, accepted_return_measures: [absolute, excess_pp], max_drawdown: -0.10, max_holdings: 5, max_replacements: 5}
+benchmark:
+  code: 000300.SH
+  label: 沪深300价格指数
+  series_labels: {bench_nav: 沪深300价格指数（未扣费用）, excess_nav: 策略净值 ÷ 沪深300价格指数净值}
+  nav_mode_label: 净值与沪深300
+  relative_mode_label: 策略相对沪深300
+  description: 基准为沪深300价格指数，首日开盘建仓、随后按收盘估值，未扣费用且未计分红；策略为前复权口径，分红处理差异使其不能直接代表相对全收益指数的净超额。年化超额按策略年化减指数年化统计（百分点），相对净值年化另列。10%回撤约束始终作用于策略自身净值。
+execution:
+  initial_capital: 1000000
+  topn: 5
+  commission_bps: 3
+  min_commission: 5
+  stamp_tax_bps: 10   # Conservative flat historical fee, not a claim of today's statutory rate.
+  slippage_bps: 10
+  allocation: equal
+  max_position_pct: 20
+  rebalance_threshold_pct: 3
+  timing_index: 000300.SH
+  timing_execution: rebalance
+  stop_loss_pct: 0
+  take_profit_pct: 0
+  trailing_stop_pct: 0
+  max_holding_days: 0
+  risk_cooldown_days: 3
+variants:
+  - {id: monthly_full, rebalance_days: 20, target_exposure_pct: 100, timing_rule: none}
+  - {id: monthly_defensive, rebalance_days: 20, target_exposure_pct: 60, timing_rule: index_trend_risk}
+  - {id: weekly_defensive, rebalance_days: 5, target_exposure_pct: 60, timing_rule: index_trend_risk}
+baseline_strategies: [turn_low, lowvol_defense, low_intraday_range, lowvol_momentum, intraday_range_ma_confirm, lottery_reversal]
+ic:
+  horizons: [5, 20]
+  min_stocks: 100
+  sample_every_days: 5
+  select_top: 3
+  factors:
+    - {name: turn_20d, sign: -1}
+    - {name: lowvol_60, sign: -1}
+    - {name: intraday_range_20, sign: -1}
+    - {name: max_daily_return_20, sign: -1}
+    - {name: price_pressure_20, sign: -1}
+    - {name: amihud_illiquidity_20, sign: 1}
+    - {name: downside_realized_vol_20, sign: -1}
+    - {name: momentum_3m, sign: 1}
+    - {name: momentum_6m, sign: 1}
+    - {name: turn_volatility_60, sign: -1}
+    - {name: overnight_gap_20, sign: 1}
+    - {name: return_skew_20, sign: -1}
+new_factors:
+  # Algorithms, periods and requirements are owned by factor_library.yaml(.example).
+  research_trend_efficiency: {default_sign: 1}
+  research_gap_risk: {default_sign: -1}
+selection:
+  finalists: 3
+  discovery_min_annual: 0
+  # These are search priorities, never substitutes for the hard targets.
+  ranking: calmar
+stress: {slippage_bps: 30, commission_bps: 5}
+stock_selection_policies:
+  factor_rank:
+    label: 因子排名前五
+    risk_filter: false
+    retain_rank: 0
+    correlation_limit: null
+  risk_pool:
+    label: 低波动低跳空候选池
+    risk_filter: true
+    max_vol_percentile: 0.6
+    max_gap_percentile: 0.7
+    trend_period: 60
+    trend_floor: -0.1
+    retain_rank: 0
+    correlation_limit: null
+  risk_pool_buffer_diverse:
+    label: 风险候选池＋持仓缓冲＋相关性分散
+    risk_filter: true
+    max_vol_percentile: 0.6
+    max_gap_percentile: 0.7
+    trend_period: 60
+    trend_floor: -0.1
+    retain_rank: 15
+    correlation_limit: 0.75
+    correlation_window: 120
+    correlation_min_observations: 60
+    max_candidates: 100

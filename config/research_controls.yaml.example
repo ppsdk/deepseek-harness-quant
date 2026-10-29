@@ -1,10 +1,13 @@
 # All editable indicator fields and portfolio defaults come from this API-owned file.
-max_indicator_groups: 40
+max_indicator_groups: 128
+generic_integer_field: {min: 1, max: 10000, step: 1, integer: true}
+generic_float_field: {min: -10000, max: 10000, step: 0.01}
 warmup_calendar_multiplier: 3
 metadata_cache_seconds: 5
 archive_cache_entries: 128
 page_sizes: {factors: 20, strategies: 12, backtests: 15, stocks: 30}
 parameter_fields:
+  m: {label: 对照计算周期, min: 2, max: 1000, step: 1, integer: true}
   n: {label: 计算周期（根K线）, min: 2, max: 1000, step: 1, integer: true}
   fast: {label: 短周期, min: 1, max: 500, step: 1, integer: true}
   slow: {label: 长周期, min: 2, max: 1000, step: 1, integer: true}
@@ -61,6 +64,13 @@ legacy_indicators:
   new_high_250: {label: 创历史新高, operation: new_high, params: {n: 250}, requires: [close]}
   turn_20d: {label: 平均换手率, operation: turn_mean, params: {n: 20}, requires: [turn]}
 parameters:
+  trade_mode: {label: 普通交易方式, type: select, default: fixed, options: {fixed: 固定间隔调仓, event: 均线条件触发（无信号不交易）}}
+  min_trade_interval_days: {label: 普通交易最小间隔（交易日，紧急市场退出除外）, type: number, default: 5, min: 5, max: 252, step: 1, integer: true}
+  max_traded_codes_per_day: {label: 每个交易日最多涉及几只股票（买卖合计去重）, type: number, default: 5, min: 1, max: 100, step: 1, integer: true}
+  entry_ma_fast: {label: 入场短均线周期, type: number, default: 20, min: 2, max: 500, step: 1, integer: true}
+  entry_ma_slow: {label: 入场长均线周期, type: number, default: 60, min: 3, max: 1000, step: 1, integer: true}
+  exit_ma_period: {label: 退出均线周期, type: number, default: 20, min: 2, max: 1000, step: 1, integer: true}
+  ma_confirm_days: {label: 均线条件连续确认几日, type: number, default: 2, min: 1, max: 20, step: 1, integer: true}
   signal_plan_id: {label: 候选股的入场与退出方案, type: select, default: '', options: {'': 不使用候选股信号方案}}
   indicator_params: {label: 指标参数, type: object, hidden: true, default: {}}
   target_exposure_pct: {label: 总股票仓位上限（%）, type: number, default: 100, min: 0, max: 100, step: 5}
@@ -74,11 +84,13 @@ parameters:
   max_holding_days: {label: 最多持有几个交易日（0关闭）, type: number, default: 0, min: 0, max: 2000, step: 1, integer: true}
   risk_cooldown_days: {label: 止损止盈后暂停买回几天, type: number, default: 3, min: 0, max: 250, step: 1, integer: true}
 parameter_groups:
+  - label: 条件触发交易（选择后不按固定间隔强制换股）
+    fields: [trade_mode, min_trade_interval_days, max_traded_codes_per_day, entry_ma_fast, entry_ma_slow, exit_ma_period, ma_confirm_days]
   - label: 仓位与资金分配
     fields: [target_exposure_pct, max_position_pct, allocation, allocation_lookback, rebalance_threshold_pct]
   - label: 个股退出规则（收盘判断，次日开盘尝试）
     fields: [signal_plan_id, stop_loss_pct, take_profit_pct, trailing_stop_pct, max_holding_days, risk_cooldown_days]
-strategy_default_keys: [topn, stocks, rebalance_days, target_exposure_pct, max_position_pct, allocation, allocation_lookback, rebalance_threshold_pct, stop_loss_pct, take_profit_pct, trailing_stop_pct, max_holding_days, risk_cooldown_days, indicator_params]
+strategy_default_keys: [topn, stocks, rebalance_days, trade_mode, min_trade_interval_days, max_traded_codes_per_day, entry_ma_fast, entry_ma_slow, exit_ma_period, ma_confirm_days, target_exposure_pct, max_position_pct, allocation, allocation_lookback, rebalance_threshold_pct, stop_loss_pct, take_profit_pct, trailing_stop_pct, max_holding_days, risk_cooldown_days, indicator_params]
 trigger_labels:
   rebalance: 策略调仓
   market_risk_exit: 市场择时退出

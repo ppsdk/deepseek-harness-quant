@@ -11,8 +11,54 @@ backtest_form_groups:
 stock_pools:
   max_codes: 6000
 chart:
-  max_indicators: 6
-  max_overlays: 8        # 同一指标按不同参数叠加的条数上限（如 MA20 + MA30 + MA120）
+  max_indicators: 16
+  max_overlays: 32       # 资源上限；周期和参数组合由用户自由填写。
+  # 页面按类型展示；历史因子编号保留给策略/归档，周期作为本次图表参数。
+  indicator_families:
+    sma: {label: MA 均线, base: ma_20}
+    ema: {label: EMA 指数均线, base: ema_20}
+    roc: {label: ROC 涨跌幅（%）, base: roc_20}
+    price_vs_high: {label: 价格距区间高点（%）, base: price_vs_high_60}
+  indicator_labels:
+    boll_upper: 布林带上轨
+    boll_lower: 布林带下轨
+    rsi: RSI 涨跌力量
+    atr_pct: ATR 波幅占股价（%）
+    adx: ADX 趋势强弱
+    cci: CCI 价格偏离
+    wr: WR 威廉指标
+    volume_ratio: 量比
+    mfi: MFI 资金流量
+    cmf: CMF 资金流向
+    obv_flow: OBV 成交量净额
+    volatility: 涨跌波动率（%）
+    donchian_upper: 唐奇安通道上轨
+    donchian_lower: 唐奇安通道下轨
+    atr: ATR 平均价格波幅
+    dmi_plus: DMI +DI 上涨方向
+    dmi_minus: DMI -DI 下跌方向
+    cmo: CMO 涨跌动量
+    aroon_up: Aroon 上行
+    aroon_down: Aroon 下行
+    trix: TRIX 三重均线变化率（%）
+    stoch_rsi: 随机 RSI
+    drawdown: 距收盘高点的回撤（%）
+    downside_volatility: 下跌波动率（%）
+    close_location_value: 收盘位置指数
+    open_to_close: 开收比（%）
+    intraday_range_pct: 日内振幅占股价（%）
+    overnight_gap: 隔夜跳空（%）
+    turnover_acceleration: 换手率加速
+    turnover_shrink: 换手率收缩
+    obv_momentum: OBV 涨幅（%）
+    price_percentile: 价格区间百分位（%）
+    return_skew: 日收益偏度
+    max_daily_return: 最大单日涨幅（%）
+    downside_realized_vol: 下行已实现波动率
+    overnight_intraday_split: 隔夜收益占比
+    new_high_strength: 新高突破强度
+    price_pressure: 买方压力
+    amihud_illiquidity: Amihud 非流动性
   # 一键叠加的常用组合；base 是已有指标编号，params 覆盖它的参数。与默认的20/60日均线互补。
   overlay_presets:
     ma_short: {label: 短期均线 5/10, items: [{base: ma_20, params: {n: 5}}, {base: ma_20, params: {n: 10}}]}
@@ -27,6 +73,7 @@ chart:
   - boll_lower
   - donchian_upper
   - donchian_lower
+  - atr
   default_indicators:
   - ma_20
   - ma_60
@@ -73,7 +120,7 @@ download_states:
   completed: 已完成
   partial: 部分失败
   failed: 下载失败
-  interrupted: 已中断
+  interrupted: 下载已中断，可重新更新
 help_sections:
 - title: 保存选股代码，换策略回测
   text: 在研究台运行选股后保存股票池，再到“保存的股票池”选择另一套策略回测。保存的是实际选中的股票；回测开始日必须晚于选股日期，不能拿后来才知道的名单检验更早年份。
@@ -136,6 +183,7 @@ factor_analysis:
   - 5
 updates:
   price_start: '2019-01-01'
+  auto_stock_download_on_open: true  # 每次打开数据页自动更新全市场日线；已有任务会复用
   papers_url: https://export.arxiv.org/api/query
   papers_query: cat:q-fin.ST OR cat:q-fin.PM OR (cat:cs.LG AND all:stock)
   papers_limit: 20
@@ -146,6 +194,17 @@ timing:
     symbol: sh000300
     name: 沪深300
   rules:
+    index_strong_risk_ma:
+      label: 强风险空仓，均线恢复确认后再入场
+      operation: ma_risk_hysteresis
+      fast: 20
+      slow: 60
+      risk_period: 120
+      drawdown_period: 60
+      drawdown_threshold: -0.10
+      recovery_confirm: 3
+      warmup_calendar_days: 500
+      description: 指数跌破120日均线且20日均线低于60日均线，或距60日高点回撤超过10%时空仓；收盘高于60日均线且20日均线高于60日均线连续3日后解除。只用当时收盘数据，次日开盘尝试执行。
     none:
       label: 不加市场择时条件
     index_above_ma60:
@@ -223,6 +282,10 @@ formula_help:
 update_actions:
 - id: stocks
   label: 更新股票日线
+- id: stocks_retry
+  action: stocks
+  params: {retry_failed: true}
+  label: 仅重试失败股票
 - id: directory
   label: 更新股票名称与代码
 - id: benchmark

@@ -1,0 +1,187 @@
+as_of: '2026-10-28'
+base_config: mainboard_repair_v3
+valuation_config: four_axis_factor_mining
+output_dir: output/strategy_research/technical_rule_extension
+title: 短均线与基本面筛选补充研究
+period:
+  start: '2020-01-01'
+  end: '2026-10-23'
+benchmark:
+  code: 000300.SH
+  label: 沪深300价格指数
+execution:
+  initial_capital: 1000000
+  topn: 10
+  max_position_pct: 10
+  max_traded_codes_per_day: 20
+  min_trade_interval_days: 5
+  rebalance_days: 5
+  trade_mode: event
+  allocation: equal
+  commission_bps: 3
+  min_commission: 5
+  stamp_tax_bps: 10
+  slippage_bps: 10
+  rebalance_threshold_pct: 2
+  target_exposure_pct: 100
+  timing_index: 000300.SH
+  timing_rule: technical_rule_gate
+  timing_execution: daily_exit
+  risk_cooldown_days: 5
+  stop_loss_pct: 8
+  take_profit_pct: 0
+  trailing_stop_pct: 12
+  max_holding_days: 0
+stress:
+  commission_bps: 5
+  slippage_bps: 30
+market:
+  fast: 20
+  slow: 60
+  confirm_days: 2
+indicators:
+  kdj_period: 9
+  kdj_smooth: 3
+  kdj_cross_lookback: 3
+  kdj_entry_max: 60
+  kdj_exit_min: 75
+  dmi_period: 14
+  adx_min: 20
+  trend_confirm: 2
+  exit_confirm: 2
+  max_price_vs_fast: 0.1
+  queue_liquidity_window: 20
+screens:
+  reasonable_value:
+    label: 盈利与合理估值
+    limits:
+      pe:
+        min_exclusive: 0
+        max_inclusive: 30
+      pb:
+        min_exclusive: 0
+        max_inclusive: 3
+      pcf:
+        min_exclusive: 0
+  cash_value:
+    label: 低估值与正现金流
+    limits:
+      pe:
+        min_exclusive: 0
+        max_inclusive: 20
+      pb:
+        min_exclusive: 0
+        max_inclusive: 2.5
+      pcf:
+        min_exclusive: 0
+        max_inclusive: 20
+  no_fundamental:
+    label: 同池不做基本面筛选
+    limits: {}
+  cash_flexible:
+    label: 盈利、正现金流与宽估值约束
+    limits:
+      pe:
+        min_exclusive: 0
+        max_inclusive: 30
+      pb:
+        min_exclusive: 0
+        max_inclusive: 4
+      pcf:
+        min_exclusive: 0
+        max_inclusive: 30
+variants:
+  cash_value_strict_100:
+    label: 低估值与正现金流／MA20/60门控／100%上限
+    screen: cash_value
+    market: strict
+    exposure: 100
+  cash_value_strict_70:
+    label: 低估值与正现金流／MA20/60门控／70%上限
+    screen: cash_value
+    market: strict
+    exposure: 70
+  cash_value_ma120_100:
+    label: 低估值与正现金流／MA120门控／100%上限
+    screen: cash_value
+    market: ma120
+    exposure: 100
+  cash_value_ma120_70:
+    label: 低估值与正现金流／MA120门控／70%上限
+    screen: cash_value
+    market: ma120
+    exposure: 70
+  cash_flexible_strict_100:
+    label: 盈利、正现金流与宽估值约束／MA20/60门控／100%上限
+    screen: cash_flexible
+    market: strict
+    exposure: 100
+  cash_flexible_strict_70:
+    label: 盈利、正现金流与宽估值约束／MA20/60门控／70%上限
+    screen: cash_flexible
+    market: strict
+    exposure: 70
+  cash_flexible_ma120_100:
+    label: 盈利、正现金流与宽估值约束／MA120门控／100%上限
+    screen: cash_flexible
+    market: ma120
+    exposure: 100
+  cash_flexible_ma120_70:
+    label: 盈利、正现金流与宽估值约束／MA120门控／70%上限
+    screen: cash_flexible
+    market: ma120
+    exposure: 70
+strategies:
+  ma5_20:
+    label: MA5/20双均线
+    average: sma
+    fast: 5
+    slow: 20
+    kdj: false
+    dmi: false
+  ma10_30:
+    label: MA10/30双均线
+    average: sma
+    fast: 10
+    slow: 30
+    kdj: false
+    dmi: false
+  ma5_20_kdj:
+    label: MA5/20＋KDJ回升
+    average: sma
+    fast: 5
+    slow: 20
+    kdj: true
+    dmi: false
+  ma10_30_dmi:
+    label: MA10/30＋DMI趋势
+    average: sma
+    fast: 10
+    slow: 30
+    kdj: false
+    dmi: true
+acceptance:
+  min_annual_return: 0.05
+  drawdown_bands:
+  - 0.1
+  - 0.15
+  - 0.2
+  min_average_exposure: 0.1
+  min_trade_dates: 12
+diagnostics:
+  representative_count: 3
+  alternative_queue: code_order
+  gate_ablation: true
+design_note: 首批32组均未满足5%收益门槛后提出的补充探索：缩短个股均线周期，并比较MA20/60与MA120市场门控；没有因子加权或机器学习。补充网格在本批运行前固定，所有结果保留。两批历史均已观察，不是独立验证。
+data_note: 股票快照2019年起，热身后从2020年回放；估值历史只覆盖512只当前主板样本。使用信号日确切日期的PE/PB/PCF，不用当前ROE或增长率回填历史。历史财务版本、退市/ST全集尚未核验。
+execution_note: 收盘形成信号，次日开盘加滑点尝试执行。普通成交至少相隔5个交易日，包括个股技术退出及止损；指数均线风险退出允许紧急例外。多信号同时触发时按此前20日平均成交额排队，旧持仓不因排名变化强制卖出。没有固定期限换股。
+cost_note: 佣金3bp且每笔最低5元、滑点10bp、卖出税固定10bp；压力佣金5bp、滑点30bp。现金不计息，小数份额、前复权，未模拟整手与盘口容量。一字板使用完整日线作保守事后过滤。
+markets:
+  strict:
+    fast: 20
+    slow: 60
+    confirm_days: 2
+  ma120:
+    fast: 1
+    slow: 120
+    confirm_days: 2

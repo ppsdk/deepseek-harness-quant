@@ -1,0 +1,112 @@
+base_config: mainboard_repair_v3
+output_dir: output/strategy_research/mainboard_technical_selection_v2
+rounds:
+- id: round_1
+  discovery:
+    start: '2019-01-01'
+    end: '2022-12-31'
+  validation:
+    start: '2023-01-01'
+    end: '2024-12-31'
+- id: round_2_extended
+  discovery:
+    start: '2019-01-01'
+    end: '2024-12-31'
+  validation:
+    start: '2025-01-01'
+    end: '2025-12-31'
+acceptance:
+  max_annual_one_way_turnover: 3.0
+  min_average_exposure: 0.08
+  min_trade_dates: 4
+finalists: 3
+execution:
+  topn: 5
+  max_traded_codes_per_day: 5
+  max_position_pct: 20
+  selection_policy: stable_diverse
+variants:
+- id: exposure60
+  target_exposure_pct: 60
+- id: exposure80
+  target_exposure_pct: 80
+candidates:
+  ma20_60_defensive:
+    average: sma
+    fast: 20
+    slow: 60
+    confirm_days: 2
+    momentum_periods:
+    - 63
+    - 126
+    absolute_period: 63
+    skip_days: 0
+    score: defensive
+    risk_pool: balanced
+    label: MA20/60趋势＋止损止盈＋低波低换手选股
+    operation: ma_trend
+    mode: event
+    execution:
+      trade_mode: event
+      rebalance_days: 20
+      min_trade_interval_days: 5
+      stop_loss_pct: 5
+      take_profit_pct: 20
+      trailing_stop_pct: 0
+      risk_cooldown_days: 10
+    score_factors:
+    - lowvol_60
+    - turn_20d
+  ma20_120_defensive:
+    average: sma
+    fast: 20
+    slow: 120
+    confirm_days: 2
+    momentum_periods:
+    - 63
+    - 126
+    absolute_period: 63
+    skip_days: 0
+    score: defensive
+    risk_pool: balanced
+    label: MA20/120长趋势＋止损止盈＋低波低换手选股
+    operation: ma_trend
+    mode: event
+    execution:
+      trade_mode: event
+      rebalance_days: 20
+      min_trade_interval_days: 5
+      stop_loss_pct: 5
+      take_profit_pct: 20
+      trailing_stop_pct: 0
+      risk_cooldown_days: 10
+    score_factors:
+    - lowvol_60
+    - turn_20d
+  dual_momentum_defensive:
+    average: sma
+    fast: 20
+    slow: 60
+    confirm_days: 2
+    momentum_periods:
+    - 63
+    - 126
+    absolute_period: 63
+    skip_days: 0
+    score: defensive
+    risk_pool: balanced
+    label: 双期限截面动量＋绝对动量过滤＋低波低换手选股
+    operation: dual_momentum
+    mode: fixed
+    execution:
+      trade_mode: fixed
+      rebalance_days: 20
+      min_trade_interval_days: 5
+      stop_loss_pct: 5
+      take_profit_pct: 20
+      trailing_stop_pct: 0
+      risk_cooldown_days: 10
+    score_factors:
+    - lowvol_60
+    - turn_20d
+design_note: 迭代探索第二组，未宣称新盲测。保持第一组交易信号、止损止盈、仓位及约束不变，只改变选股排序为低波低换手。第一组12个与本组6个候选合计每轮18个组合；发现期选定后冻结验证。

@@ -15,6 +15,10 @@ def build_report(result):
     reconstructing positions from final holdings would invent historical data.
     """
     cfg = report_config()
+    for key, spec in cfg.get('benchmark_metrics', {}).items():
+        if key in result.get('metrics', {}):cfg['metrics'][key]=spec
+    for key, label in result.get('benchmark', {}).get('series_labels', {}).items():
+        if key in cfg['series'] and isinstance(label,str):cfg['series'][key]['label']=label
     from factors.research_library import factor_definitions
     cfg['chart_indicators'] = {key: item['label'] for key, item in factor_definitions().items()
                                if item.get('chart')}

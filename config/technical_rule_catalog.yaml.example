@@ -1,0 +1,7 @@
+title: 基本面硬筛选＋技术买卖规则研究
+output_dir: output/strategy_research/technical_rule_index
+note: 各批均为全段探索，完整保留成功与失败组合；年化5%按扣费后的绝对收益判断。10%、15%、20%回撤档位用于历史筛查，不保证未来回撤。
+studies:
+  initial: {config: technical_rule_research, label: 双均线与KDJ/DMI首批}
+  extension: {config: technical_rule_extension, label: 短均线与市场门控补充}
+  allocation: {config: technical_rule_allocation, label: 持股上限与资金利用率诊断}

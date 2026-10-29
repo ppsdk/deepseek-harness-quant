@@ -1,0 +1,11 @@
+output_dir: output/strategy_research/strategy_assembly_index
+scope_labels:
+  mainboard: 全主板技术组合
+  valuation_sample: 固定估值样本对照
+studies:
+  weighted:
+    config: mainboard_strategy_assembly
+    label: 低相关加权组合
+  shortlist:
+    config: mainboard_strategy_assembly_v2
+    label: 稳定候选池与执行规则拆解

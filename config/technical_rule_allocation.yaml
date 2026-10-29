@@ -1,0 +1,143 @@
+as_of: '2026-10-28'
+base_config: mainboard_repair_v3
+valuation_config: four_axis_factor_mining
+output_dir: output/strategy_research/technical_rule_allocation
+title: 技术规则资金利用率诊断
+period:
+  start: '2020-01-01'
+  end: '2026-10-23'
+benchmark:
+  code: 000300.SH
+  label: 沪深300价格指数
+execution:
+  initial_capital: 1000000
+  topn: 10
+  max_position_pct: 10
+  max_traded_codes_per_day: 20
+  min_trade_interval_days: 5
+  rebalance_days: 5
+  trade_mode: event
+  allocation: equal
+  commission_bps: 3
+  min_commission: 5
+  stamp_tax_bps: 10
+  slippage_bps: 10
+  rebalance_threshold_pct: 2
+  target_exposure_pct: 100
+  timing_index: 000300.SH
+  timing_rule: technical_rule_gate
+  timing_execution: daily_exit
+  risk_cooldown_days: 5
+  stop_loss_pct: 8
+  take_profit_pct: 0
+  trailing_stop_pct: 12
+  max_holding_days: 0
+stress:
+  commission_bps: 5
+  slippage_bps: 30
+market:
+  fast: 20
+  slow: 60
+  confirm_days: 2
+indicators:
+  kdj_period: 9
+  kdj_smooth: 3
+  kdj_cross_lookback: 3
+  kdj_entry_max: 60
+  kdj_exit_min: 75
+  dmi_period: 14
+  adx_min: 20
+  trend_confirm: 2
+  exit_confirm: 2
+  max_price_vs_fast: 0.1
+  queue_liquidity_window: 20
+screens:
+  reasonable_value:
+    label: 盈利与合理估值
+    limits:
+      pe:
+        min_exclusive: 0
+        max_inclusive: 30
+      pb:
+        min_exclusive: 0
+        max_inclusive: 3
+      pcf:
+        min_exclusive: 0
+  cash_value:
+    label: 低估值与正现金流
+    limits:
+      pe:
+        min_exclusive: 0
+        max_inclusive: 20
+      pb:
+        min_exclusive: 0
+        max_inclusive: 2.5
+      pcf:
+        min_exclusive: 0
+        max_inclusive: 20
+  no_fundamental:
+    label: 同池不做基本面筛选
+    limits: {}
+variants:
+  cash_5_70:
+    label: 低估值现金流／最多5只／70%上限
+    screen: cash_value
+    exposure: 70
+    topn: 5
+    max_position_pct: 20.0
+  cash_5_100:
+    label: 低估值现金流／最多5只／100%上限
+    screen: cash_value
+    exposure: 100
+    topn: 5
+    max_position_pct: 20.0
+  cash_8_70:
+    label: 低估值现金流／最多8只／70%上限
+    screen: cash_value
+    exposure: 70
+    topn: 8
+    max_position_pct: 12.5
+  cash_8_100:
+    label: 低估值现金流／最多8只／100%上限
+    screen: cash_value
+    exposure: 100
+    topn: 8
+    max_position_pct: 12.5
+strategies:
+  ma_kdj:
+    label: MA20/60＋KDJ回升
+    average: sma
+    fast: 20
+    slow: 60
+    kdj: true
+    dmi: false
+  slow_ma_dmi:
+    label: MA20/120＋DMI趋势
+    average: sma
+    fast: 20
+    slow: 120
+    kdj: false
+    dmi: true
+  ma_kdj_dmi:
+    label: MA20/60＋KDJ＋DMI
+    average: sma
+    fast: 20
+    slow: 60
+    kdj: true
+    dmi: true
+acceptance:
+  min_annual_return: 0.05
+  drawdown_bands:
+  - 0.1
+  - 0.15
+  - 0.2
+  min_average_exposure: 0.1
+  min_trade_dates: 12
+diagnostics:
+  representative_count: 3
+  alternative_queue: code_order
+  gate_ablation: true
+design_note: 在前两批未满足目标后进行资金利用率诊断：固定低估值现金流筛选、指标与指数门控，只改变最多持股数5/8只和新仓总预算70%/100%；无杠杆，无因子或机器学习。该批同样使用已观察历史，属于事后探索，全部结果保留。
+data_note: 股票快照2019年起，热身后从2020年回放；估值历史只覆盖512只当前主板样本。使用信号日确切日期的PE/PB/PCF，不用当前ROE或增长率回填历史。历史财务版本、退市/ST全集尚未核验。
+execution_note: 收盘形成信号，次日开盘加滑点尝试执行。普通成交至少相隔5个交易日，包括个股技术退出及止损；指数均线风险退出允许紧急例外。多信号同时触发时按此前20日平均成交额排队，旧持仓不因排名变化强制卖出。没有固定期限换股。
+cost_note: 佣金3bp且每笔最低5元、滑点10bp、卖出税固定10bp；压力佣金5bp、滑点30bp。现金不计息，小数份额、前复权，未模拟整手与盘口容量。一字板使用完整日线作保守事后过滤。
