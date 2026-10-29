@@ -68,6 +68,29 @@ class AlphaTests(unittest.TestCase):
 
 
 class IndicatorTests(unittest.TestCase):
+    def test_registered_rolling_pca_is_causal_and_aligned(self):
+        from factors.research_library import raw_factor
+        p = sample(180)
+        spec = {
+            'id': 'rolling_pca_test', 'kind': 'composite',
+            'operation': 'rolling_pca_score',
+            'dependencies': ['roc_20', 'volatility_20', 'bias_20'],
+            'params': {'window': 60, 'components': 1, 'min_samples': 30},
+        }
+        definitions = {**factor_definitions(), 'rolling_pca_test': spec}
+        out = raw_factor('rolling_pca_test', p, definitions)
+        self.assertEqual(out.shape, p['close'].shape)
+        self.assertEqual(out.index.tolist(), p['close'].index.tolist())
+        self.assertEqual(out.columns.tolist(), p['close'].columns.tolist())
+        self.assertTrue(np.isfinite(out.iloc[-1].to_numpy()).any())
+        future = {k: v.copy() for k, v in p.items()}
+        future['close'].iloc[-1] *= 100
+        future['open'].iloc[-1] *= 100
+        future['high'].iloc[-1] *= 100
+        future['low'].iloc[-1] *= 100
+        changed = raw_factor('rolling_pca_test', future, definitions)
+        pd.testing.assert_frame_equal(out.iloc[:-1], changed.iloc[:-1])
+
     def test_rsi_sided_flat_wilder_seed_and_cci(self):
         p = sample(60)
         for values, expected in ((np.arange(60)+10,100),(70-np.arange(60),0),(np.full(60,10),50)):

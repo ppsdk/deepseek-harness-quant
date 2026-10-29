@@ -136,6 +136,18 @@ def catalogue(base=None):
     }
     for key, item in {**(base or {}), **factor_definitions()}.items():
         m = dict(item)
+        # Complex algorithms expose their capabilities and parameter contract
+        # through the same catalogue consumed by the existing workbench.
+        if m.get('operation'):
+            try:
+                from factors.algorithm_registry import algorithm_catalog
+                meta = algorithm_catalog().get(m['operation'])
+                if meta:
+                    m.setdefault('algorithm_id', meta.get('algorithm_id'))
+                    m.setdefault('research_capabilities', meta.get('research_capabilities', []))
+                    m.setdefault('causal', meta.get('causal', True))
+            except (ImportError, ValueError):
+                pass
         reasons = []
         for field in m.get('requires', []):
             if field in ('raw_close', 'vwap') and not status['raw_prices']:
@@ -201,7 +213,13 @@ def raw_factor(name, panels, definitions=None):
         definitions = {**definitions, name: panels['_indicator_specs'][name]}
     if name in definitions:
         spec = definitions[name]
-        if spec['kind'] == 'technical':
+        # Registered algorithms are resolved before legacy kind dispatch. This
+        # keeps complex research methods on the same factor/strategy/backtest
+        # path without creating a dedicated UI.
+        from factors.algorithm_registry import algorithm_catalog, run_registered_algorithm
+        if spec.get('operation') in algorithm_catalog():
+            raw = run_registered_algorithm(spec, panels, definitions)
+        elif spec['kind'] == 'technical':
             from factors.research_indicators import calculate
             raw = calculate(spec, panels)
         elif spec['kind'] == 'pattern':

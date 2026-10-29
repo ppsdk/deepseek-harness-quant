@@ -1,4 +1,23 @@
 factors:
+  rolling_pca_score:
+    label: 滚动PCA复合因子
+    description: 在每个交易日只使用此前窗口的多个因子拟合PCA，并输出当前截面第一主成分得分；可直接用于选股和回测。
+    category: 复杂复合算法
+    kind: composite
+    operation: rolling_pca_score
+    dependencies:
+    - roc_20
+    - volatility_20
+    - bias_20
+    params:
+      window: 120
+      components: 1
+      min_samples: 60
+    requires:
+    - close
+    default_sign: 1
+    warmup_calendar_days: 180
+    chart: false
   axis_momentum_risk_adjusted:
     label: 风险调整动量
     description: 参数化四类因子研究假设；统计方向、显著性和适用范围请查看四类挖掘结果，不代表保证收益。
