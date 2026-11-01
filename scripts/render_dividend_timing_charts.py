@@ -42,11 +42,11 @@ def frame_from_accounts(run: dict) -> pd.DataFrame:
     return frame
 
 
-def make_kline(frame: pd.DataFrame, run: dict, path: Path, code: str) -> None:
+def make_kline(frame: pd.DataFrame, run: dict, path: Path, code: str, label='波动预算基线') -> None:
     start = pd.to_datetime(run["actual_start"])
     frame = frame.copy()
     frame.index = pd.to_datetime(frame.index)
-    price = frame.loc[frame.index >= start].copy()
+    price = frame.loc[(frame.index >= start) & (frame.index <= pd.Timestamp(run['params']['end']))].copy()
     price.index = pd.to_datetime(price.index)
     x = np.arange(len(price), dtype=float)
     index_map = {day.strftime("%Y-%m-%d"): i for i, day in enumerate(price.index)}
@@ -64,7 +64,7 @@ def make_kline(frame: pd.DataFrame, run: dict, path: Path, code: str) -> None:
 
     buys = [t for t in run["trades"] if t["side"] == "buy"]
     sells = [t for t in run["trades"] if t["side"] == "sell"]
-    for trade, marker, color, label in ((buys, "^", "#2166ac", "买入"),
+    for trade, marker, color, side_label in ((buys, "^", "#2166ac", "买入"),
                                         (sells, "v", "#762a83", "卖出")):
         xs, ys = [], []
         for item in trade:
@@ -74,7 +74,7 @@ def make_kline(frame: pd.DataFrame, run: dict, path: Path, code: str) -> None:
                 ys.append(float(item["fill_price"]))
         if xs:
             ax.scatter(xs, ys, marker=marker, s=44, color=color, edgecolor="white",
-                       linewidth=0.45, zorder=4, label=label)
+                       linewidth=0.45, zorder=4, label=side_label)
 
     tick_step = max(1, len(price) // 12)
     ticks = np.arange(0, len(price), tick_step)
@@ -82,8 +82,8 @@ def make_kline(frame: pd.DataFrame, run: dict, path: Path, code: str) -> None:
     ax.set_xticklabels([price.index[i].strftime("%Y-%m") for i in ticks], rotation=35, ha="right")
     ax.set_xlim(-2, len(price) + 2)
     ax.set_ylabel("未复权价格")
-    ax.set_title(f"{code} K线与买卖成交标记（现金流账本 · 波动预算基线）", loc="left", pad=22, fontsize=14, weight="bold")
-    ax.text(0.99, 0.98, f"回测成交价（含滑点）；标记含加减仓；{price.index[0].date()}—{price.index[-1].date()}",
+    ax.set_title(f"{code} K线与买卖成交标记（现金流账本 · {label}）", loc="left", pad=22, fontsize=14, weight="bold")
+    ax.text(0.99, 0.98, f"回测成交价（含滑点）；买{len(buys)}笔/卖{len(sells)}笔；{price.index[0].date()}—{price.index[-1].date()}",
             transform=ax.transAxes, fontsize=9, color="#555555", va="top", ha="right",
             bbox=dict(facecolor="white", edgecolor="none", alpha=0.75, pad=2))
     ax.grid(axis="y", alpha=0.22, linewidth=0.6)
@@ -99,12 +99,14 @@ def make_kline(frame: pd.DataFrame, run: dict, path: Path, code: str) -> None:
     plt.close(fig)
 
 
-def make_equity(strategy: dict, buy_hold: dict, path: Path, code: str) -> None:
+def make_equity(strategy: dict, buy_hold: dict, path: Path, code: str, label='波动预算基线') -> None:
     strat = frame_from_accounts(strategy)
     hold = frame_from_accounts(buy_hold)
-    joined = pd.concat([strat["nav"].rename("策略"), hold["nav"].rename("买入持有")], axis=1).dropna()
+    if not strat.index.equals(hold.index):
+        raise ValueError('策略和对照日期不一致，不能静默截取或拼接曲线。')
+    joined = pd.concat([strat["nav"].rename("策略"), hold["nav"].rename("买入持有")], axis=1)
     fig, ax = plt.subplots(figsize=(14, 7), dpi=180)
-    ax.plot(joined.index, (joined["策略"] - 1) * 100, color="#2166ac", linewidth=2.0, label="波动预算基线")
+    ax.plot(joined.index, (joined["策略"] - 1) * 100, color="#2166ac", linewidth=2.0, label=label)
     ax.plot(joined.index, (joined["买入持有"] - 1) * 100, color="#b2182b", linewidth=1.7, label="买入持有")
     ax.axhline(0, color="#777777", linewidth=0.8)
     ax.set_ylabel("累计收益（%，含现金分红及已扣费用/税负）")
@@ -130,22 +132,35 @@ def make_equity(strategy: dict, buy_hold: dict, path: Path, code: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--code", default="600900.SH")
+    parser.add_argument("--study", choices=['volatility', 'reversal'], default='volatility')
     parser.add_argument("--output-dir", default="output/strategy_research/charts")
     args = parser.parse_args()
     base = read_config("dividend_timing_research")
     frames, _ = load_data(base, download=False, price_basis="none")
     if args.code not in frames:
         raise ValueError(f"本地现金流行情中没有 {args.code}")
-    cash_overlay = ROOT / "output/strategy_research/dividend_overlay_cashflow_v1"
-    cash_initial = ROOT / "output/strategy_research/dividend_timing_cashflow_v1"
-    strategy = read_run(cash_overlay, args.code, "volatility_budget_base")
-    buy_hold = read_run(cash_initial, args.code, "buy_hold")
+    cfg = read_config('dividend_volatility_research')
+    if args.study == 'reversal':
+        folder = ROOT / cfg['reversal']['output_dir']
+        results = json.loads((folder/'results.json').read_text(encoding='utf-8'))
+        group = next(g for g,spec in base['groups'].items() if args.code in spec['assets'])
+        variant = results['selected'][group]
+        strategy = read_run(folder,args.code,variant)
+        buy_hold = read_run(folder,args.code,'buy_hold')
+        label = f'低位反转/{variant}（发现期选取）'
+        stem = f'{args.code}_reversal'
+    else:
+        cash_overlay = ROOT / cfg['overlay_output_dir'].replace('_v1','_cashflow_v1')
+        cash_initial = ROOT / base['cashflow_output_dir']
+        strategy = read_run(cash_overlay, args.code, "volatility_budget_base")
+        buy_hold = read_run(cash_initial, args.code, "buy_hold")
+        label, stem = '波动预算基线', args.code
     output = ROOT / args.output_dir
     output.mkdir(parents=True, exist_ok=True)
-    make_kline(frames[args.code], strategy, output / f"{args.code}_kline_signals.png", args.code)
-    make_equity(strategy, buy_hold, output / f"{args.code}_equity_curve.png", args.code)
-    print(output / f"{args.code}_kline_signals.png")
-    print(output / f"{args.code}_equity_curve.png")
+    make_kline(frames[args.code], strategy, output / f"{stem}_kline_signals.png", args.code,label)
+    make_equity(strategy, buy_hold, output / f"{stem}_equity_curve.png", args.code,label)
+    print(output / f"{stem}_kline_signals.png")
+    print(output / f"{stem}_equity_curve.png")
 
 
 if __name__ == "__main__":

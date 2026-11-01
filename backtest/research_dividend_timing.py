@@ -84,3 +84,91 @@ def technical_overlay(panels, benchmark, group, variant, settings):
         diagnostics['kdj_overbought_days'] = int(overbought.astype('boolean').fillna(False).sum())
         cap = min(cap, float(settings['kdj_cap']) * 100.0)
     return target.clip(lower=0., upper=100.), diagnostics
+
+
+def causal_signal_panels(panels, actions):
+    """Forward-only total-return OHLC for signals; keep raw execution separate.
+
+    Actions are applied on the first available bar on/after ex-date. No future
+    action rescales earlier prices. Cash is a gross distribution signal proxy,
+    while the shared execution ledger handles actual payment and FIFO tax.
+    """
+    import pandas as pd
+    view = dict(panels)
+    for field in ('open', 'high', 'low', 'close'):
+        view[field] = panels[field].astype(float).copy()
+    for code in panels['close']:
+        close = panels['close'][code].astype(float)
+        applicable = sorted([e for e in actions if e['code'] == code], key=lambda e: e['ex_date'])
+        scale = pd.Series(np.nan, index=close.index)
+        previous = None
+        level = None
+        cursor = 0
+        for day, value in close.items():
+            if not np.isfinite(value) or value <= 0:
+                continue
+            ratio, cash = 1., 0.
+            while cursor < len(applicable) and applicable[cursor]['ex_date'] <= str(day)[:10]:
+                event = applicable[cursor]
+                if event['available_date'] > event['ex_date']:
+                    raise ValueError('信号公司行为在除权时尚不可用。')
+                cash += ratio * float(event['cash_per_share'])
+                ratio *= float(event['split_ratio'])
+                cursor += 1
+            level = value if previous is None else level * (value * ratio + cash) / previous
+            scale.loc[day] = level / value
+            previous = value
+        for field in ('open', 'high', 'low', 'close'):
+            view[field][code] = view[field][code] * scale
+    return view
+
+
+def reversal_signals(panels, variant, settings):
+    """Low-zone reversal entry, high-zone/trend failure exit, no pivot backdating."""
+    if variant not in ('kdj', 'bollinger', 'combo'):
+        raise ValueError('未知反转规则：' + str(variant))
+    from factors.research_indicators import calculate
+    from backtest.research_rule_strategies import confirmed
+    close = panels['close']
+    n, smooth = int(settings['kdj_period']), int(settings['kdj_smooth'])
+    k = calculate(dict(operation='kdj_k', params=dict(n=n, smooth=smooth)), panels)
+    d = calculate(dict(operation='kdj_d', params=dict(n=n, smooth=smooth)), panels)
+    mid = close.rolling(int(settings['bollinger_period'])).mean()
+    sd = close.rolling(int(settings['bollinger_period'])).std(ddof=0)
+    lower = mid - float(settings['bollinger_k']) * sd
+    upper = mid + float(settings['bollinger_k']) * sd
+    position = (close - lower) / (upper - lower).replace(0, np.nan)
+    known = close.notna() & k.notna() & d.notna() & position.notna()
+    lookback = int(settings['setup_lookback'])
+    low_k = k.le(settings['oversold']) & d.le(settings['oversold'])
+    high_k = k.ge(settings['overbought']) & d.ge(settings['overbought'])
+    recent_low = low_k.astype(float).rolling(lookback, min_periods=1).max().eq(1)
+    recent_high = high_k.astype(float).rolling(lookback, min_periods=1).max().eq(1)
+    cross_up = k.gt(d) & k.shift().le(d.shift())
+    cross_down = k.lt(d) & k.shift().ge(d.shift())
+    low_band = position.le(settings['low_position']).astype(float).rolling(lookback, min_periods=1).max().eq(1)
+    high_band = position.ge(settings['high_position']).astype(float).rolling(lookback, min_periods=1).max().eq(1)
+    reclaim = position.gt(settings['low_position']) & position.shift().le(settings['low_position'])
+    confirmation = int(settings['confirmation_lookback'])
+    recent_cross = cross_up.astype(float).rolling(confirmation, min_periods=1).max().eq(1)
+    recent_reclaim = reclaim.astype(float).rolling(confirmation, min_periods=1).max().eq(1)
+    k_entry = recent_low & recent_cross & k.gt(d) & close.gt(close.shift())
+    b_entry = low_band & recent_reclaim & position.gt(settings['low_position']) & close.gt(close.shift())
+    if variant == 'kdj':
+        entry, high_exit = k_entry, recent_high & cross_down
+    elif variant == 'bollinger':
+        entry = b_entry
+        high_exit = high_band & position.lt(settings['high_position']) & position.shift().ge(settings['high_position'])
+    else:
+        entry = low_band & recent_low & k.gt(d) & position.gt(settings['low_position']) & (recent_cross | recent_reclaim) & close.gt(close.shift())
+        high_exit = high_band & recent_high & cross_down
+    trend = close.rolling(int(settings['trend_period'])).mean()
+    below = confirmed(close.lt(trend), known & trend.notna(), int(settings['trend_confirm'])).eq(1)
+    # Price must have been above its average recently, then close below it
+    # twice while the average turns down. Actual positions belong exclusively
+    # to the shared execution ledger, not to this signal calculator.
+    recently_above = close.ge(trend).astype(float).rolling(int(settings['trend_period']), min_periods=1).max().eq(1)
+    trend_exit = recently_above & below & trend.lt(trend.shift())
+    exit_signal = high_exit | trend_exit
+    return dict(_entry=(entry & ~exit_signal).astype(float).where(known), _exit=exit_signal.astype(float).where(known)), dict(
+        k=k, d=d, mid=mid, lower=lower, upper=upper, position=position, trend=trend)

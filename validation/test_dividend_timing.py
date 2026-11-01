@@ -5,13 +5,44 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from backtest.research_dividend_timing import signals, volatility_budget, technical_overlay
+from backtest.research_dividend_timing import signals, volatility_budget, technical_overlay, causal_signal_panels, reversal_signals
 from backtest.research_cash_actions import CashActions
 from scripts.dividend_timing_research import run
 from factors.research_library import read_config
 
 
 class DividendTimingTests(unittest.TestCase):
+    def test_reversal_signal_prefix_and_future_actions_do_not_rewrite_history(self):
+        cfg=read_config('dividend_volatility_research')['reversal']
+        frame=self.frame(400)
+        frame['close'] = 10*np.exp(np.random.default_rng(42).normal(0,.025,400).cumsum())
+        frame['open']=frame['close']*.998
+        frame['high']=frame['close']*1.01
+        frame['low']=frame['close']*.99
+        from scripts.dividend_timing_research import panels_for
+        p=panels_for(frame,'x')
+        action=dict(code='x',ex_date=frame.index[350],available_date=frame.index[349],
+                    cash_per_share=.1,split_ratio=2.)
+        adjusted=causal_signal_panels(p,[action])
+        pd.testing.assert_frame_equal(adjusted['close'].iloc[:350],p['close'].iloc[:350],check_exact=False)
+        for variant in cfg['variants']:
+            full,_=reversal_signals(p,variant,cfg)
+            prefix,_=reversal_signals({k:v.iloc[:250] for k,v in p.items()},variant,cfg)
+            self.assertTrue(full['_entry'].eq(1).any().any())
+            self.assertTrue(full['_exit'].eq(1).any().any())
+            for key in full:
+                pd.testing.assert_frame_equal(full[key].iloc[:250],prefix[key])
+                self.assertFalse((full['_entry'].eq(1)&full['_exit'].eq(1)).any().any())
+
+    def test_causal_signal_prices_remove_mechanical_dividend_and_split_drop(self):
+        prices=pd.DataFrame({'x':[10.,9.,4.5,4.5]},index=['2024-01-01','2024-01-02','2024-01-03','2024-01-04'])
+        p={k:prices.copy() for k in ('open','high','low','close')}
+        actions=[dict(code='x',ex_date='2024-01-02',available_date='2024-01-01',cash_per_share=1.,split_ratio=1.),
+                 dict(code='x',ex_date='2024-01-03',available_date='2024-01-02',cash_per_share=0.,split_ratio=2.)]
+        out=causal_signal_panels(p,actions)
+        np.testing.assert_allclose(out['close']['x'],10.)
+        pd.testing.assert_frame_equal(p['close'],prices)
+
     def test_cash_actions_require_raw_prices_and_apply_dividend_tax_by_fifo(self):
         events=[dict(id='x-div',code='x',record_date='2024-01-02',ex_date='2024-01-03',
                      pay_date='2024-01-04',available_date='2024-01-01',cash_per_share=.10,
