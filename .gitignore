@@ -67,6 +67,8 @@ docs/发布清单_v1.0.9.md
 
 config/factor_library.yaml
 config/research_diversification.yaml
+config/dividend_timing_research.yaml
+config/dividend_volatility_research.yaml
 config/alpha101.yaml
 config/research_presets.yaml
 config/research_factors.yaml

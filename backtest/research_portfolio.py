@@ -21,10 +21,26 @@ def capped_weights(raw, budget, cap):
     return result
 
 
+def exposure_budget(panels, signal_day, p):
+    """Optional causal sizing adapter; ordinary fixed-exposure runs are unchanged."""
+    maximum = p.get('target_exposure_pct', 100) / 100
+    series = panels.get('_target_exposure_pct')
+    if series is None:
+        return maximum
+    if not isinstance(series, pd.Series) or not series.index.equals(panels['close'].index):
+        raise ValueError('动态仓位必须为与行情日期完全对齐的 Series。')
+    value = series.loc[signal_day]
+    if pd.isna(value):
+        return 0.  # unavailable risk estimate never creates buying power
+    if isinstance(value, (bool, np.bool_)) or not np.isfinite(value) or not 0 <= value <= 100:
+        raise ValueError('动态仓位必须在0到100之间。')
+    return min(maximum, float(value)/100)
+
+
 def weights(panels, codes, signal_day, p):
     if not codes:
         return {}
-    exposure = p.get('target_exposure_pct', 100) / 100
+    exposure = exposure_budget(panels, signal_day, p)
     cap = p.get('max_position_pct', 100) / 100
     # Vacant candidate slots remain cash, matching the equal-weight ledger.
     budget = exposure * len(codes) / p['topn']
@@ -63,6 +79,8 @@ def simulate(panels, score, p):
     opening_frame = panels['open']
     cash = float(p['initial_capital'])
     shares, marks, basis, peaks, entered = {}, {}, {}, {}, {}
+    from backtest.research_cash_actions import CashActions
+    cash_actions = CashActions(panels)
     pending, cooldown = {}, {}
     trades, rejected, equity, account = [], [], [], []
     dates = close.index[(close.index >= p['start']) & (close.index <= p['end'])]
@@ -146,6 +164,7 @@ def simulate(panels, score, p):
         traded_codes = set()
         opening = opening_frame.loc[day]
         signal_day = close.index[pos - 1] if pos > 0 else None
+        cash += cash_actions.start_day(day, shares, basis, peaks, marks, active_plan)
 
         if signal_day is None:
             pass
@@ -280,7 +299,7 @@ def simulate(panels, score, p):
                     targets = []
                     allocation = {}
 
-                open_equity = cash + sum(
+                open_equity = cash + cash_actions.receivable + sum(
                     quantity * (
                         float(opening.get(code))
                         if pd.notna(opening.get(code)) and opening[code] > 0
@@ -436,7 +455,7 @@ def simulate(panels, score, p):
                             room = max(
                                 0.,
                                 open_equity *
-                                p.get('target_exposure_pct', 100) / 100 -
+                                exposure_budget(panels, active_plan['signal_date'] if active_plan is not None else signal_day, p) -
                                 invested,
                             )
                             quantity = min(quantity, affordable, room / raw)
@@ -465,9 +484,12 @@ def simulate(panels, score, p):
                             continue
 
                         if side == 'sell':
-                            cash += amount - commission - tax
+                            dividend_tax = cash_actions.sell(code, quantity, day)
+                            cash += amount - commission - tax - dividend_tax
                         else:
+                            dividend_tax = 0.
                             cash -= amount + commission
+                            cash_actions.buy(code, quantity, day)
                         after = held + (quantity if side == 'buy' else -quantity)
 
                         if emergency_exit:
@@ -511,6 +533,7 @@ def simulate(panels, score, p):
                             position_after=max(0., after),
                             open=raw, fill_price=price, amount=amount,
                             commission=commission, stamp_tax=tax,
+                            dividend_tax=dividend_tax,
                             slippage_cost=quantity * abs(price - raw),
                             cash_after=cash,
                         ))
@@ -531,6 +554,7 @@ def simulate(panels, score, p):
 
         if len(trades) > trade_count_before:
             last_trade_pos = pos
+        cash_actions.end_day(day)
 
         stale = False
         for code in shares:
@@ -547,10 +571,11 @@ def simulate(panels, score, p):
         stale_days += int(stale)
         market_value = sum(
             quantity * marks[code] for code, quantity in shares.items())
-        total = cash + market_value
+        total = cash + market_value + cash_actions.receivable
         equity.append(total)
         account.append(dict(
             date=day, cash=cash, market_value=market_value, equity=total,
+            dividend_receivable=cash_actions.receivable,
             exposure=market_value / total if total > 0 else None,
             holding_count=len(shares), stale_valuation=stale,
             position_weights={c: q*marks[c]/total for c, q in shares.items()} if total > 0 else {},
@@ -580,4 +605,5 @@ def simulate(panels, score, p):
         realized_pnl=realized, stale_valuation_days=stale_days,
         daily_account=account,
         diversification_targets=panels['_portfolio_constraint_audit'],
+        cash_distributions=cash_actions.report(str(dates[-1])) if len(dates) else {},
     )

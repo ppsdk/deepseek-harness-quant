@@ -1,0 +1,92 @@
+as_of: '2026-11-01'
+checked_at: '2026-11-01T20:17:48+08:00'
+data_start: '2019-01-01'
+data_end: '2026-10-29'
+output_dir: output/strategy_research/dividend_timing_v1
+cashflow_output_dir: output/strategy_research/dividend_timing_cashflow_v1
+cash_actions_dir: data/private/dividend_timing
+etf_database: data/cache/dividend_timing_etf.db
+groups:
+  stock:
+    label: 红利公用事业个股
+    primary: 600900.SH
+    assets:
+      600900.SH: 长江电力
+      600025.SH: 华能水电
+      600886.SH: 国投电力
+      600674.SH: 川投能源
+    core_fraction: 0.30
+    stamp_tax_bps: 10
+  etf:
+    label: 场内红利低波ETF
+    primary: 512890.SH
+    assets:
+      512890.SH: 华泰柏瑞中证红利低波动ETF
+      515450.SH: 南方标普中国A股大盘红利低波50ETF
+    core_fraction: 0.0
+    stamp_tax_bps: 0
+network:
+  backend: tencent
+  timeout: 15
+  retries: 0
+candidate_grid:
+  slow: [60, 120, 200]
+  band: [0.01, 0.02]
+  confirm_days: 3
+periods:
+  discovery: {start: '2020-01-01', end: '2022-12-31'}
+  validation: {start: '2023-01-01', end: '2024-12-31'}
+  forward_replay: {start: '2025-01-01', end: '2026-10-29'}
+  full: {start: '2020-01-01', end: '2026-10-29'}
+execution:
+  initial_capital: 1000000
+  topn: 1
+  rebalance_days: 5
+  min_trade_interval_days: 5
+  max_traded_codes_per_day: 1
+  trade_mode: fixed
+  allocation: equal
+  max_position_pct: 100
+  target_exposure_pct: 100
+  rebalance_threshold_pct: 0
+  commission_bps: 3
+  min_commission: 5
+  slippage_bps: 10
+  timing_rule: none
+  stop_loss_pct: 0
+  take_profit_pct: 0
+  trailing_stop_pct: 0
+  max_holding_days: 0
+  risk_cooldown_days: 0
+  diversification:
+    portfolio: {enabled: false}
+stress: {commission_bps: 5, slippage_bps: 30}
+selection:
+  max_drawdown: -0.20
+  min_days: 200
+design_note: 六组参数只按发现期跨资产中位数Calmar选择；验证和后续回放不参与选参。所有年份在既有平台中可能已被查看，时间隔离不等于全新盲测。复权价格及调整份额为分红收益代理，非含红利税现金账本；ETF不收股票卖出印花税，管理托管费用已反映在价格/净值中，不重复扣费。
+sources:
+  - id: CYPC-DIV-2025
+    title: 长江电力2025年年度权益分派实施公告
+    published_at: '2026-07-10'
+    url: https://static.cninfo.com.cn/finalpage/2026-07-10/1225416894.PDF
+    access_class: public_full
+    evidence: 公司披露；确认证券身份、已实施分红及个人持股期限差异税负，不作为历史择时输入。
+  - id: ETF-512890-KID
+    title: 华泰柏瑞中证红利低波动ETF产品资料概要
+    published_at: '2026-03-18'
+    url: https://www.sse.com.cn/disclosure/fund/announcement/c/new/2026-03-18/512890_20260318_FNWM.pdf
+    access_class: public_full
+    evidence: 交易所披露；确认基金身份、上市日期、跟踪指数及场内交易费用以券商实际费率为准。
+  - id: ETF-515450-SSE
+    title: 南方红利低波50ETF流动性服务公告
+    published_at: '2020-04-01'
+    url: https://www.sse.com.cn/disclosure/announcement/general/c/c_20200331_5025647.shtml
+    access_class: public_full
+    evidence: 交易所披露；核验515450的产品身份，和512890不是同一只基金。
+  - id: CSRC-ETF-2023
+    title: ETF基金概览
+    published_at: '2023-07-27'
+    url: https://www.csrc.gov.cn/qinghai/c105501/c7422297/content.shtml
+    access_class: public_full
+    evidence: 监管投教；核验A股ETF交易方式、二级市场不收印花税及ETF联接基金区别。
