@@ -70,9 +70,8 @@ def make_kline(frame: pd.DataFrame, run: dict, path: Path, code: str) -> None:
         for item in trade:
             key = str(item["date"])[:10]
             if key in index_map:
-                row = price.iloc[index_map[key]]
                 xs.append(index_map[key])
-                ys.append(float(row["low"] if marker == "^" else row["high"]))
+                ys.append(float(item["fill_price"]))
         if xs:
             ax.scatter(xs, ys, marker=marker, s=44, color=color, edgecolor="white",
                        linewidth=0.45, zorder=4, label=label)
@@ -84,7 +83,7 @@ def make_kline(frame: pd.DataFrame, run: dict, path: Path, code: str) -> None:
     ax.set_xlim(-2, len(price) + 2)
     ax.set_ylabel("未复权价格")
     ax.set_title(f"{code} K线与买卖成交标记（现金流账本 · 波动预算基线）", loc="left", pad=22, fontsize=14, weight="bold")
-    ax.text(0.99, 0.98, f"成交标记为下一开盘实际成交；区间 {price.index[0].date()}—{price.index[-1].date()}",
+    ax.text(0.99, 0.98, f"回测成交价（含滑点）；标记含加减仓；{price.index[0].date()}—{price.index[-1].date()}",
             transform=ax.transAxes, fontsize=9, color="#555555", va="top", ha="right",
             bbox=dict(facecolor="white", edgecolor="none", alpha=0.75, pad=2))
     ax.grid(axis="y", alpha=0.22, linewidth=0.6)
@@ -108,7 +107,7 @@ def make_equity(strategy: dict, buy_hold: dict, path: Path, code: str) -> None:
     ax.plot(joined.index, (joined["策略"] - 1) * 100, color="#2166ac", linewidth=2.0, label="波动预算基线")
     ax.plot(joined.index, (joined["买入持有"] - 1) * 100, color="#b2182b", linewidth=1.7, label="买入持有")
     ax.axhline(0, color="#777777", linewidth=0.8)
-    ax.set_ylabel("累计收益（%）")
+    ax.set_ylabel("累计收益（%，含现金分红及已扣费用/税负）")
     ax.set_xlabel("日期")
     ax.xaxis.set_major_locator(mdates.YearLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
