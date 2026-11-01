@@ -256,5 +256,7 @@ def evaluate(query=None):
                   trades=run['trades'], rejections=run['rejections'], cash_distributions=run['cash_distributions'],
                   recent_events=events[-cfg['recent_events']:], warnings=warnings)
     if history:
-        result.update(history=timeline, bars=[dict(date=day, **{f: _number(frame.at[day, f]) for f in ('open','high','low','close','volume')}) for day in accounts])
+        result.update(history=timeline,
+                      comparison_history=dict(buy_hold=buy_hold['daily_account'], stress=stress['daily_account']),
+                      bars=[dict(date=day, **{f: _number(frame.at[day, f]) for f in ('open','high','low','close','volume')}) for day in accounts])
     return result

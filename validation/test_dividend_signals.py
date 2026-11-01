@@ -70,6 +70,11 @@ class DividendSignalTests(unittest.TestCase):
                 self.assertIn('buy_hold_metrics', result)
                 self.assertTrue(all(t['signal_date'] < t['date'] for t in result['trades']))
                 self.assertEqual(result['history'][-1], result['latest'])
+                for key, metric in [('buy_hold', 'buy_hold_metrics'), ('stress', 'stress_metrics')]:
+                    comparison = result['comparison_history'][key]
+                    self.assertEqual([r['date'] for r in comparison], [r['date'] for r in result['history']])
+                    self.assertAlmostEqual(comparison[-1]['equity']/result['effective']['execution']['initial_capital'],
+                                           result[metric]['final_nav'])
 
     def test_stale_unknown_calendar_missing_action_audit_are_never_data_ready(self):
         known = self.run_service(coverage=True)
