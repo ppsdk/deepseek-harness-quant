@@ -63,7 +63,10 @@ def _profile(cfg, ident):
     profile['id'] = ident
     settings = profile['settings']
     variant = profile['variant']
-    if variant == 'kdj_trend_exit':
+    if variant == 'kdj_regime':
+        from backtest.research_kdj_regime import validate
+        validate(settings)
+    elif variant == 'kdj_trend_exit':
         from backtest.research_kdj_trend_exit import validate
         validate(settings)
     elif variant == 'kdj_filtered':
@@ -84,7 +87,7 @@ def _profile(cfg, ident):
         if settings['bollinger_k'] <= 0 or not 0 <= settings['low_position'] < settings['high_position'] <= 1:
             raise ValueError('布林辅助计算参数无效。')
     else:
-        raise ValueError('红利信号仅支持已实现的 kdj / kdj_filtered / kdj_trend_exit。')
+        raise ValueError('红利信号仅支持已实现的 kdj / kdj_filtered / kdj_trend_exit / kdj_regime。')
     interval = settings.get('min_trade_interval_days')
     if isinstance(interval, bool) or not isinstance(interval, int) or interval < 1:
         raise ValueError('min_trade_interval_days 必须是正整数。')
@@ -133,8 +136,11 @@ def describe_day(code, day, panels, adapters, indicators, account, labels):
     reasons = []
     if entry == 1:
         reasons.append('kdj_low_reversal')
+        if flag('entry_trend_confirmation'): reasons.append('dmi_bullish_and_ma_recovery')
     if exit_signal == 1:
         if flag('high_exit'): reasons.append('kdj_high_cross_down')
+        if flag('dmi_peak_exit'): reasons.append('dmi_uptrend_weakening')
+        if flag('weak_rebound_exit'): reasons.append('dmi_bearish_and_ma_failure')
         if flag('dmi_exit') and flag('dmi_selected'): reasons.append('dmi_bearish_confirmed')
         if flag('trend_exit') and ('ma_selected' not in indicators or flag('ma_selected')): reasons.append('ma_trend_exit')
     if state == 'setup': reasons.append('oversold_waiting_confirmation')
@@ -150,6 +156,10 @@ def describe_day(code, day, panels, adapters, indicators, account, labels):
                 pdi=_number(indicators['pdi'].at[day, code]) if 'pdi' in indicators else None,
                 mdi=_number(indicators['mdi'].at[day, code]) if 'mdi' in indicators else None,
                 adx=_number(indicators['adx'].at[day, code]) if 'adx' in indicators else None,
+                dmi_peak_context=flag('dmi_peak_context') if 'dmi_peak_context' in indicators else None,
+                bullish_confirmation=flag('bullish_confirmation') if 'bullish_confirmation' in indicators else None,
+                entry_trend_confirmation=flag('entry_trend_confirmation') if 'entry_trend_confirmation' in indicators else None,
+                weak_rebound_exit=flag('weak_rebound_exit') if 'weak_rebound_exit' in indicators else None,
                 trend_filter=flag('trend_filter') if 'trend_filter' in indicators else None,
                 volume_ratio=_number(indicators['volume_ratio'].at[day, code]) if 'volume_ratio' in indicators else None)
 
@@ -226,6 +236,9 @@ def evaluate(query=None):
                    equity=account['equity'], cash=account['cash'], exposure=account['exposure'],
                    market_value=account['market_value'], dividend_receivable=account['dividend_receivable'],
                    fills=trades.get(day, []))
+        for key in ('entry_ma', 'long_ma'):
+            if key in indicators:
+                row[key+'_raw'] = _number(indicators[key].at[day, code] / scale.at[day])
         timeline.append(row)
         # Only actionable model transitions become events; recurring exits while
         # already flat are still inspectable in history, not repeated sell calls.

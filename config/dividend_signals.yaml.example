@@ -1,6 +1,6 @@
 schema_version: 1
 base_config: dividend_timing_research
-default_profile: kdj_21_5_dmi_ma60
+default_profile: kdj_21_5_regime
 default_code: 512890.SH
 assets: [512890.SH, 515450.SH]
 start: '2020-01-01'
@@ -8,7 +8,7 @@ output_dir: output/strategy_research/dividend_signals_v1
 action_coverage_file: data/private/dividend_timing/coverage.json
 max_history_rows: 6000
 recent_events: 12
-comparison_profiles: [kdj_21_5, kdj_21_5_dmi, kdj_21_5_ma60, kdj_21_5_dmi_ma60]
+comparison_profiles: [kdj_21_5, kdj_21_5_dmi, kdj_21_5_ma60, kdj_21_5_dmi_ma60, kdj_21_5_dmi_weakening, kdj_21_5_regime]
 states:
   insufficient: 数据不足
   buy: 低位反转买入条件
@@ -52,6 +52,34 @@ profiles:
     settings:
       <<: *trend_exit_settings
       exit_mode: ma
+    risk: {}
+  kdj_21_5_dmi_weakening:
+    label: KDJ21买入与DMI多头趋势衰减退出
+    variant: kdj_trend_exit
+    research_status: exploratory
+    settings: &dmi_weakening_settings
+      <<: *trend_exit_settings
+      exit_mode: dmi_weakening
+      dmi_peak_lookback: 10
+      dmi_peak_adx_min: 25
+      dmi_peak_pdi_min: 25
+      dmi_peak_confirm: 2
+    risk: {}
+  kdj_21_5_regime:
+    label: KDJ21低位准备与DMI转多确认及双路径退出
+    variant: kdj_regime
+    research_status: exploratory
+    settings:
+      <<: *dmi_weakening_settings
+      setup_lookback: 30
+      confirmation_lookback: 30
+      entry_dmi_confirm: 3
+      entry_ma_period: 10
+      entry_slope_lookback: 3
+      dmi_confirm: 3
+      weak_exit_period: 20
+      weak_exit_slope_lookback: 3
+      weak_exit_confirm: 2
     risk: {}
   kdj_21_5:
     label: KDJ21低位反转实验信号

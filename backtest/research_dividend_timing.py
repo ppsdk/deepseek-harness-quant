@@ -125,6 +125,9 @@ def causal_signal_panels(panels, actions):
 
 def reversal_signals(panels, variant, settings):
     """Low-zone reversal entry, high-zone/trend failure exit, no pivot backdating."""
+    if variant == 'kdj_regime':
+        from backtest.research_kdj_regime import signals as regime_signals
+        return regime_signals(panels, settings)
     if variant == 'kdj_trend_exit':
         from backtest.research_kdj_trend_exit import signals as trend_exit_signals
         return trend_exit_signals(panels, settings)

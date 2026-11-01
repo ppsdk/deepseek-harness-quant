@@ -2,7 +2,8 @@
 
 Dependencies: pandas/numpy and the existing OHLC indicator calculator. No
 holding state or execution lives here. validate() declares required warmup;
-all parameters come from the profile. ADX is diagnostic, never a hidden gate.
+all parameters come from the profile. ADX is diagnostic for the original
+cross/MA modes; the explicit dmi_weakening mode uses it to confirm decay.
 """
 import numpy as np
 
@@ -18,8 +19,8 @@ def validate(settings):
     threshold = settings.get('oversold')
     if isinstance(threshold, bool) or not isinstance(threshold, (int, float)) or not np.isfinite(threshold) or not 0 <= threshold <= 100:
         raise ValueError('oversold 必须在0至100之间。')
-    if settings.get('exit_mode') not in ('dmi', 'ma', 'dmi_and_ma'):
-        raise ValueError('exit_mode 仅支持 dmi / ma / dmi_and_ma。')
+    if settings.get('exit_mode') not in ('dmi', 'ma', 'dmi_and_ma', 'dmi_weakening'):
+        raise ValueError('exit_mode 仅支持 dmi / ma / dmi_and_ma / dmi_weakening。')
     if not isinstance(settings.get('exit_require_falling'), bool):
         raise ValueError('exit_require_falling 必须是布尔值。')
     # Reject old sell-related KDJ knobs rather than silently ignoring them.
@@ -27,11 +28,40 @@ def validate(settings):
                'dmi_period', 'dmi_confirm', 'exit_period', 'exit_confirm',
                'exit_slope_lookback', 'min_trade_interval_days', 'oversold',
                'exit_mode', 'exit_require_falling'}
+    if settings['exit_mode'] == 'dmi_weakening':
+        allowed |= {'dmi_peak_lookback', 'dmi_peak_confirm', 'dmi_peak_adx_min', 'dmi_peak_pdi_min'}
+        for key in ('dmi_peak_lookback', 'dmi_peak_confirm'):
+            value = settings.get(key)
+            if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+                raise ValueError(key + ' 必须是正整数。')
+        for key in ('dmi_peak_adx_min', 'dmi_peak_pdi_min'):
+            value = settings.get(key)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value) or not 0 <= value <= 100:
+                raise ValueError(key + ' 必须在0至100之间。')
     if set(settings) - allowed:
         raise ValueError('KDJ买入/趋势退出不支持参数：' + ','.join(sorted(set(settings)-allowed)))
     return max(settings['kdj_period'] + 2*(settings['kdj_smooth']-1),
+               2*settings['dmi_period'] + settings.get('dmi_peak_lookback', 0) + settings.get('dmi_peak_confirm', 0),
                2*settings['dmi_period'] + settings['dmi_confirm'],
                settings['exit_period'] + settings['exit_slope_lookback'] + settings['exit_confirm'])
+
+
+def weakening_exit(pdi, mdi, adx, settings):
+    """Recent bullish strength, then confirmed decay; no future peak search."""
+    from backtest.research_rule_strategies import confirmed
+    known = pdi.notna() & mdi.notna() & adx.notna()
+    bullish = pdi.gt(mdi) & pdi.ge(settings['dmi_peak_pdi_min']) & adx.ge(settings['dmi_peak_adx_min'])
+    # Use only completed prior observations to arm a bullish exhaustion exit.
+    # A strong downtrend (high ADX with -DI dominance) cannot arm this rule.
+    context = bullish.astype(float).where(known).shift().rolling(
+        settings['dmi_peak_lookback'], min_periods=settings['dmi_peak_lookback']).max()
+    armed = context.eq(1)
+    known &= context.notna() & pdi.shift().notna() & mdi.shift().notna() & adx.shift().notna()
+    falling_pdi, falling_adx, rising_mdi = pdi.lt(pdi.shift()), adx.lt(adx.shift()), mdi.gt(mdi.shift())
+    condition = armed & falling_pdi & falling_adx & rising_mdi
+    leave = confirmed(condition, known, settings['dmi_peak_confirm']).eq(1)
+    warning = armed & (falling_pdi | falling_adx)
+    return leave, known, warning, armed
 
 
 def signals(panels, settings):
@@ -64,7 +94,12 @@ def signals(panels, settings):
         ma_known &= ma.shift(settings['exit_slope_lookback']).notna()
         ma_exit &= ma.lt(ma.shift(settings['exit_slope_lookback']))
     mode = settings['exit_mode']
-    if mode == 'dmi':
+    extra = {}
+    if mode == 'dmi_weakening':
+        leave, exit_known, weakening, armed = weakening_exit(pdi, mdi, adx, settings)
+        exit_known &= close.notna()
+        extra = dict(dmi_peak_exit=leave, dmi_peak_context=armed)
+    elif mode == 'dmi':
         leave, exit_known, weakening = dmi_exit, dmi_known, dmi_weak
     elif mode == 'ma':
         leave, exit_known, weakening = ma_exit, ma_known, ma_weak
@@ -78,5 +113,5 @@ def signals(panels, settings):
         known=entry_known & exit_known, exit_known=exit_known,
         recent_low=recent_low, cross_up=cross_up,
         dmi_exit=dmi_exit, trend_exit=ma_exit, exit_weakening=weakening,
-        dmi_selected=close.notna() & (mode != 'ma'),
-        ma_selected=close.notna() & (mode != 'dmi'))
+        dmi_selected=close.notna() & (mode in ('dmi', 'dmi_and_ma')),
+        ma_selected=close.notna() & (mode in ('ma', 'dmi_and_ma')), **extra)

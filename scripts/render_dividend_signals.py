@@ -47,7 +47,8 @@ def plot_signals(result, path, display_start):
     bars = bars.loc[view.index]
     st = result['effective']['profile']['settings']
     exit_period = st.get('exit_period', st.get('trend_period'))
-    separate_exit = result['effective']['profile']['variant'] == 'kdj_trend_exit'
+    regime = result['effective']['profile']['variant'] == 'kdj_regime'
+    separate_exit = result['effective']['profile']['variant'] in ('kdj_trend_exit','kdj_regime')
     heights = [3.8, 1.4, 1.2, .24] if separate_exit else [3.8, 1.45, .24]
     fig, axes = plt.subplots(len(heights), 1, figsize=(16, 11 if separate_exit else 9), sharex=True,
                              gridspec_kw={'height_ratios': heights})
@@ -65,6 +66,12 @@ def plot_signals(result, path, display_start):
     for left, right in spans(view['held']):
         ax.axvspan(left-.5, right-.5, color=BLUE, alpha=.065, zorder=0)
     ax.plot(x, view['exit_ma_raw'], color=ORANGE, lw=1.25)
+    extra_lines = []
+    if regime:
+        ax.plot(x, view['entry_ma_raw'], color='#008b8b', lw=.9)
+        ax.plot(x, view['long_ma_raw'], color='#999999', lw=.9, ls='--')
+        extra_lines = [Line2D([],[],color='#008b8b',label=f"MA{st['entry_ma_period']}入场确认"),
+                       Line2D([],[],color='#999999',ls='--',label=f"MA{exit_period}参考")]
     for value, marker, color, text, offset in [('buy','^',BLUE,'买',-30),('sell','v',PURPLE,'卖',26)]:
         signals = view[view['state'].eq(value)]
         sx = [loc[day] for day in signals.index]
@@ -82,13 +89,13 @@ def plot_signals(result, path, display_start):
             ax.annotate(text+trade['date'][5:], (i, trade['fill_price']), xytext=(0, offset),
                         textcoords='offset points', ha='center', color=color, fontsize=8,
                         arrowprops=dict(arrowstyle='-', color=color, lw=.6))
-    ma_label = f'MA{exit_period}' + ('（参考）' if separate_exit and st['exit_mode']=='dmi' else '')
+    ma_label = f"MA{st['weak_exit_period']}退出" if regime else f'MA{exit_period}' + ('（参考）' if separate_exit and st['exit_mode'] in ('dmi','dmi_weakening') else '')
     ax.legend(handles=[Line2D([],[],color=ORANGE,label=ma_label),
                        Line2D([],[],marker='o',linestyle='',markerfacecolor='none',color=BLUE,label='买入收盘信号'),
                        Line2D([],[],marker='^',linestyle='',color=BLUE,label='次日回测买入'),
                        Line2D([],[],marker='o',linestyle='',markerfacecolor='none',color=PURPLE,label='卖出收盘信号'),
-                       Line2D([],[],marker='v',linestyle='',color=PURPLE,label='次日回测卖出')],
-              loc='upper left', ncol=5, frameon=False, fontsize=9)
+                       Line2D([],[],marker='v',linestyle='',color=PURPLE,label='次日回测卖出')]+extra_lines,
+              loc='upper left', ncol=4 if regime else 5, frameon=False, fontsize=9)
     ax.set_ylabel('未复权价格')
     for column, color in [('k', BLUE), ('d', '#d95f02'), ('j', '#7570b3')]:
         kd.plot(x, view[column], color=color, lw=1.1 if column!='j' else .8, label=column.upper())
@@ -98,13 +105,30 @@ def plot_signals(result, path, display_start):
     kd.legend(loc='upper left', ncol=3, frameon=False, fontsize=9)
     if separate_exit:
         dm = axes[2]
-        for key, color, style, label in [('pdi', BLUE, '-', '+DI'), ('mdi', PURPLE, '-', '-DI'), ('adx', '#777777', '--', 'ADX（仅观察）')]:
+        peak_mode = st['exit_mode']=='dmi_weakening'
+        adx_label = 'ADX（参与退出）' if peak_mode else 'ADX（仅观察）'
+        for key, color, style, label in [('pdi', BLUE, '-', '+DI'), ('mdi', PURPLE, '-', '-DI'), ('adx', '#777777', '--', adx_label)]:
             dm.plot(x, view[key], color=color, ls=style, lw=1, label=label)
         sells = view[view['state'].eq('sell')]
+        if peak_mode:
+            triggers = view[view['reasons'].map(lambda values: 'dmi_uptrend_weakening' in values)]
+            dm.scatter([loc[day] for day in triggers.index], triggers['adx'],
+                       facecolors='none', edgecolors=PURPLE, s=32, label='多头衰减（含空仓）', zorder=3)
+            if regime:
+                weak_condition = hist['weak_rebound_exit'].eq(True)
+                weak_onset = weak_condition & ~weak_condition.shift(fill_value=False)
+                weak = view[weak_onset.reindex(view.index)]
+                dm.scatter([loc[day] for day in weak.index], weak['mdi'], marker='s',
+                           facecolors='none', edgecolors='#b06a00', s=24, label='弱趋势起点（含空仓）', zorder=3)
         if st['exit_mode'] != 'ma':
-            dm.scatter([loc[day] for day in sells.index], sells['mdi'], color=PURPLE, marker='v', s=35, zorder=4)
+            sell_y = [row['adx'] if peak_mode and 'dmi_uptrend_weakening' in row['reasons'] else row['mdi'] for _, row in sells.iterrows()]
+            dm.scatter([loc[day] for day in sells.index], sell_y, color=PURPLE, marker='v', s=35, zorder=4)
+        if peak_mode:
+            dm.axhline(st['dmi_peak_adx_min'], color='#888888', lw=.6, ls=':')
         dm.set_ylabel(f"DMI({st['dmi_period']})" + (' · 参考' if st['exit_mode']=='ma' else ''))
-        dm.legend(loc='upper left', ncol=3, frameon=False, fontsize=9)
+        top = view[['pdi','mdi','adx']].max().max()
+        if pd.notna(top): dm.set_ylim(0,max(1.,top*1.25))
+        dm.legend(loc='upper left', ncol=5 if regime else 4, frameon=False, fontsize=8 if regime else 9)
     for i, value in enumerate(view['state']):
         state.add_patch(Rectangle((i-.5, 0), 1., 1., facecolor=STATE_COLORS[value], linewidth=0))
     state.set_ylim(0,1); state.set_yticks([]); state.set_ylabel('状态', rotation=0, labelpad=22, va='center')
@@ -121,10 +145,16 @@ def plot_signals(result, path, display_start):
     if separate_exit:
         dmi_text = f"-DI>+DI 连续{st['dmi_confirm']}日"
         ma_text = f"收盘<MA{exit_period}连续{st['exit_confirm']}日" + (f"且均线低于{st['exit_slope_lookback']}日前" if st['exit_require_falling'] else '')
-        exit_text = {'dmi': dmi_text, 'ma': ma_text, 'dmi_and_ma': dmi_text+'，同时'+ma_text}[st['exit_mode']]
+        if st['exit_mode']=='dmi_weakening':
+            exit_text = f"近{st['dmi_peak_lookback']}日曾+DI>-DI、+DI≥{st['dmi_peak_pdi_min']}、ADX≥{st['dmi_peak_adx_min']}；连续{st['dmi_peak_confirm']}日+DI↓、ADX↓、-DI↑"
+        else:
+            exit_text = {'dmi': dmi_text, 'ma': ma_text, 'dmi_and_ma': dmi_text+'，同时'+ma_text}[st['exit_mode']]
         volume = '仅买入用KDJ；卖出：'+exit_text
-    fig.text(.065,.91,f"KDJ：RSV {st['kdj_period']}日，K/D各平滑{st['kdj_smooth']}，{threshold}；{volume}\n"
-             f"展示 {view.index[0]}—{view.index[-1]}；浅蓝背景为实际回测持仓，底部色带为当日收盘状态",color='#555555',fontsize=10)
+    kdj_text = f"KDJ：RSV {st['kdj_period']}日，K/D各平滑{st['kdj_smooth']}，{threshold}"
+    header = (kdj_text+'；仅用于买入\n卖出：'+exit_text) if separate_exit and st['exit_mode']=='dmi_weakening' else kdj_text+'；'+volume
+    if regime:
+        header = kdj_text+f"；准备/金叉窗口{st['setup_lookback']}/{st['confirmation_lookback']}日\n"+f"买入还需+DI>-DI连续{st['entry_dmi_confirm']}日、收盘>MA{st['entry_ma_period']}且均线上升；卖出：DMI多头衰减，或DMI偏空且跌破下行MA{st['weak_exit_period']}"
+    fig.text(.065,.925,header+f"\n展示 {view.index[0]}—{view.index[-1]}；浅蓝背景为实际回测持仓，底部色带为当日收盘状态",color='#555555',fontsize=10,va='top')
     labels = {'wait':'空仓等待','setup':'超卖待确认','buy':'买入条件','hold':'持有','weakening':'持仓转弱','sell':'卖出条件'}
     fig.legend(handles=[Patch(facecolor=STATE_COLORS[key],label=value) for key,value in labels.items()],
                loc='lower left',bbox_to_anchor=(.065,.045),ncol=6,frameon=False,fontsize=9)
@@ -192,10 +222,11 @@ def plot_equity(result, path, reference=None):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--code'); parser.add_argument('--profile'); parser.add_argument('--end')
+    parser.add_argument('--start')
     parser.add_argument('--compare-profile', help='Compare another profile from equal initial cash and date')
     parser.add_argument('--display-start',default='2025-01-01')
     args=parser.parse_args()
-    result=evaluate({**{key:value for key,value in vars(args).items() if key in ('code','profile','end') and value},'history':True})
+    result=evaluate({**{key:value for key,value in vars(args).items() if key in ('code','profile','start','end') and value},'history':True})
     reference = evaluate(dict(code=result['code'], profile=args.compare_profile, start=result['actual_start'],
                               end=result['data_end'], history=True)) if args.compare_profile else None
     output=ROOT/'output/strategy_research/charts'
