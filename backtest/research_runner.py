@@ -89,14 +89,22 @@ def list_strategies():
 def validate_params(values, cfg):
     if not isinstance(values, dict):
         raise ValueError('请求必须为 JSON 对象。')
-    if set(values) - (set(cfg['parameters']) | {'strategy'}):
+    if set(values) - (set(cfg['parameters']) | {'strategy', 'diversification'}):
         raise ValueError('存在未知回测参数。')
     p = {key: field['default'] for key, field in cfg['parameters'].items()}
     p['strategy'] = values.get('strategy', cfg['default_strategy'])
     if not isinstance(p['strategy'], str) or p['strategy'] not in cfg['strategies']:
         raise ValueError('策略不存在，请从当前策略目录中选择。')
+    if cfg['strategies'][p['strategy']].get('diversification') is not None:
+        p['diversification'] = cfg['strategies'][p['strategy']]['diversification']
     p.update(cfg['strategies'][p['strategy']].get('defaults', {}))
     p.update(values)
+    if 'diversification' in p:
+        from factors.signal_blend import settings
+        risk = p['diversification']
+        if not isinstance(risk, dict) or set(risk) - {'signal', 'portfolio'}:
+            raise ValueError('分散配置只允许 signal 和 portfolio。')
+        p['diversification'] = {key: settings(key, value) for key, value in risk.items()}
     for key, field in cfg['parameters'].items():
         if field['type'] == 'number':
             try:
@@ -154,6 +162,12 @@ def load_panels(p, cfg, definitions=None):
     history_days=max(cfg['warmup_calendar_days'],extra_days,warmup_days(p.get('indicator_params',{})),
                      int(p.get('allocation_lookback',20)*2),
                      int(max(p.get('entry_ma_slow',0),p.get('exit_ma_period',0))*2) if p.get('trade_mode')=='event' else 0)
+    from factors.signal_blend import settings as diversification_settings
+    risk = p.get('diversification', {})
+    signal_policy = diversification_settings('signal', risk.get('signal'))
+    portfolio_policy = diversification_settings('portfolio', risk.get('portfolio'))
+    history_days = max(history_days, signal_policy['window']*3 if signal_policy['enabled'] else 0,
+                       portfolio_policy['window']*3 if portfolio_policy['enabled'] else 0)
     warmup = (date.fromisoformat(p['start']) - timedelta(days=history_days)).isoformat()
     available = set()
     for db in [cache.db_path, *cache._inc_paths()]:
@@ -220,6 +234,8 @@ def load_panels(p, cfg, definitions=None):
     from factors.research_controls import apply as apply_indicators
     apply_indicators(panels,p.get('indicator_params',{}),definitions)
     attach(panels,definitions,signal_plan)
+    panels['_signal_policy'] = signal_policy
+    panels['_portfolio_policy'] = portfolio_policy
     from backtest.research_cadence import attach as attach_cadence
     attach_cadence(panels,p)
     return panels, {'available_stocks': len(available), 'selected_codes': codes,
@@ -253,7 +269,7 @@ def factor_score(panels, factors):
         weight = float(spec.get('weight', 1))
         if not math.isfinite(weight) or weight <= 0 or sign not in (-1, 1):
             raise ValueError('因子权重必须为正数，方向必须为 1 或 -1。')
-        parts.append((raw * sign).rank(axis=1, pct=True) * weight)
+        parts.append((raw * sign).rank(axis=1, pct=True))
         weights.append(weight)
         limits = raw.notna()
         if 'min' in spec: limits &= raw >= spec['min']
@@ -261,7 +277,8 @@ def factor_score(panels, factors):
         eligible = limits if eligible is None else eligible & limits
     if not parts:
         raise ValueError('策略需要至少一个因子。')
-    result=(sum(parts) / sum(weights)).where(eligible)
+    from factors.signal_blend import combine
+    result = combine(parts, weights, [s['name'] for s in factors], panels).where(eligible)
     if '_timing' in panels:result=result.where(panels['_timing'].eq(1))
     return result  # Require every selected condition.
 
@@ -380,6 +397,16 @@ def build_result(panels,data,scores,p,cfg,meta,started,archive=True):
               'elapsed_s': round(time.monotonic() - started, 3), 'archived': archive}
     from backtest.research_runtime import snapshot as runtime_snapshot
     result['provenance']=runtime_snapshot()
+    from backtest.research_diversification import snapshot, policy as diversification_policy
+    result['diversification'] = dict(
+        signal=panels.get('_signal_correlation_audit', []),
+        targets=sim.get('diversification_targets', []),
+        final=snapshot(panels, {d['code']: d['weight'] for d in sim['position_details']},
+                       panels['close'].index[panels['close'].index <= p['end']][-1], diversification_policy(panels, p)),
+        exposure_provenance=panels.get('_risk_exposure_provenance', {}),
+        settings=diversification_policy(panels, p))
+    result['signal_candidates'] = [dict(date=str(day), codes=list(rank_candidates(panels, scores, day, p['topn']).index))
+                                   for day in scores.index if p['start'] <= str(day) <= p['end']]
     from backtest.research_report import build_report
     result['report'] = build_report(result)
     return save_result(result) if archive else result

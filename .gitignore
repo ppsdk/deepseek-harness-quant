@@ -25,6 +25,7 @@ harness/home/.credentials.yaml
 
 # ---- 数据（Tushare 协议：不得再分发；请自行获取） ----
 data/cache/
+data/private/
 data/factorpool/
 data/trash/
 *.db
@@ -65,6 +66,7 @@ docs/上传GitHub.md
 docs/发布清单_v1.0.9.md
 
 config/factor_library.yaml
+config/research_diversification.yaml
 config/alpha101.yaml
 config/research_presets.yaml
 config/research_factors.yaml

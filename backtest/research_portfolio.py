@@ -37,7 +37,8 @@ def weights(panels, codes, signal_day, p):
         raw = 1 / cache[n].loc[signal_day, codes].replace(0, np.nan)
         raw = raw.where(np.isfinite(raw) & raw.gt(0)).dropna()
         budget = exposure * len(raw) / p['topn']
-    return capped_weights(raw, budget, cap).to_dict()
+    from backtest.research_diversification import constrain_targets
+    return constrain_targets(panels, capped_weights(raw, budget, cap).to_dict(), signal_day, p)
 
 
 def simulate(panels, score, p):
@@ -50,7 +51,15 @@ def simulate(panels, score, p):
     """
     from backtest.research_runner import rank_candidates
 
+    # Request-local metadata must not mutate the caller's market snapshot or
+    # survive into another run with different holdings or exposure settings.
+    panels = dict(panels)
+    panels['_portfolio_constraint_audit'] = []
     close = panels['close']
+    from backtest.research_diversification import policy as risk_policy, buy_room
+    risk_cfg = risk_policy(panels, p)
+    from data.research_exposures import attach as attach_exposures, concentration
+    exposure_labels = attach_exposures(panels)
     opening_frame = panels['open']
     cash = float(p['initial_capital'])
     shares, marks, basis, peaks, entered = {}, {}, {}, {}, {}
@@ -390,6 +399,28 @@ def simulate(panels, score, p):
                         partial_fill = False
 
                         if side == 'buy':
+                            if risk_cfg['enabled']:
+                                # Include all actual holdings, including failed sells and
+                                # earlier fills. Correlation/labels use prior close;
+                                # executable open prices size the current NAV budget.
+                                prior_values = {c: q * (float(opening[c])
+                                                if pd.notna(opening.get(c)) and opening[c] > 0 else marks[c])
+                                                for c, q in shares.items()}
+                                prior_nav = cash + sum(prior_values.values())
+                                fee_reserve = max(p['min_commission'], quantity*price*rate)
+                                prior_nav = max(0., prior_nav-fee_reserve-quantity*abs(price-raw))
+                                prior_weights = {c: v/prior_nav for c, v in prior_values.items()} if prior_nav > 0 else {}
+                                risk_room, risk_reason = buy_room(panels, code, prior_weights, signal_day, risk_cfg)
+                                risk_quantity = risk_room * max(prior_nav, 0.) / raw
+                                if risk_quantity + position_eps < quantity:
+                                    rejected.append(dict(date=day, code=code, side='buy', reason=risk_reason or 'risk_nav_budget',
+                                                         trigger=trigger, requested_quantity=quantity,
+                                                         allowed_quantity=max(0., risk_quantity)))
+                                    quantity = max(0., risk_quantity)
+                                    if active_plan is not None:
+                                        accept_partial_target(code, held + quantity)
+                                if quantity <= position_eps:
+                                    continue
                             affordable = min(
                                 cash / (price * (1 + rate)),
                                 max(0., cash - p['min_commission']) / price,
@@ -522,6 +553,9 @@ def simulate(panels, score, p):
             date=day, cash=cash, market_value=market_value, equity=total,
             exposure=market_value / total if total > 0 else None,
             holding_count=len(shares), stale_valuation=stale,
+            position_weights={c: q*marks[c]/total for c, q in shares.items()} if total > 0 else {},
+            exposures=concentration({c: q*marks[c]/total for c, q in shares.items()} if total > 0 else {},
+                                    exposure_labels, day),
         ))
 
     nav = pd.Series(
@@ -545,4 +579,5 @@ def simulate(panels, score, p):
         cash=cash, positions=shares, position_details=details,
         realized_pnl=realized, stale_valuation_days=stale_days,
         daily_account=account,
+        diversification_targets=panels['_portfolio_constraint_audit'],
     )

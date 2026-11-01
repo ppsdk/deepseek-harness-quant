@@ -97,8 +97,13 @@ def save_strategy(values):
             raise ValueError('策略默认值包含不支持的参数。')
         item = {'name': name.strip(), 'desc': desc.strip(), 'category': '自定义',
                 'instant': True, 'factor_list': cleaned, 'defaults': defaults}
+        risk = values.get('diversification', current.get(key, {}).get('diversification'))
+        if risk is not None:
+            item['diversification'] = risk
         cfg['strategies'][key] = item
         validated = validate_params({'strategy': key}, cfg)
+        if risk is not None:
+            item['diversification'] = validated['diversification']
         item['defaults'] = {k: validated[k] for k in set(defaults)|{'topn','stocks','rebalance_days'}}
         current[key] = item
         CUSTOM.parent.mkdir(parents=True, exist_ok=True)
@@ -144,15 +149,21 @@ def screen(values):
     spec = cfg['strategies'][p['strategy']]
     scores = factor_score(panels, spec['factor_list'])
     selected = rank_candidates(panels, scores, day, p['topn'])
+    from backtest.research_portfolio import weights as portfolio_weights
+    targets = portfolio_weights(panels, list(selected.index), day, p)
+    selected = selected.loc[[code for code in selected.index if targets.get(code, 0) > 0]]
+    signal_audit = list(panels.get('_signal_correlation_audit', []))
     components = {item['name']: factor_score(panels, [item]).loc[day] for item in spec['factor_list']}
     names = _names()
     rows = [{'rank': i + 1, 'code': code, 'name': names.get(code, ''), 'score': float(score),
+             'target_weight': targets[code],
              'close': float(panels['close'].at[day, code]),
              'factor_ranks': {f: float(rank[code]) for f, rank in components.items()}}
             for i, (code, score) in enumerate(selected.items())]
     result = {'ok': True, 'state': 'ready' if rows else 'no_candidates', 'signal_date': day,
               'requested_date': p['end'], 'strategy': p['strategy'], 'strategy_spec': spec,
               'params': p, 'data': data, 'candidates': rows,
+              'diversification': {'signal': signal_audit, 'targets': panels.get('_portfolio_constraint_audit', [])},
               'message': '收盘研究排名，下一交易日才可尝试成交；不产生买入指令或写入持仓。',
               'warnings': ['股票池为当前已缓存股票，存在覆盖和幸存者偏差；未知历史 ST 不视为已排除。',
                            '缺少任一策略因子值、收盘价或成交量的股票不参与排名；少于持仓上限时不补足。']}

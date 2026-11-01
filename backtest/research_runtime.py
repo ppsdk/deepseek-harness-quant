@@ -28,6 +28,7 @@ def snapshot():
                  {p for name in ('research*','factor_library','alpha101','backtest_report')
                   for p in (BASE/'config').glob(name+'.yaml*')} |
                  {BASE/p for p in ('factors/alpha101_engine.py','factors/factor_engine.py',
+                                  'factors/signal_blend.py','factors/algorithm_registry.py',
                                   'data/cache.py','data/akshare_loader.py','data/fetcher_akshare.py','backtest/bt_report.py')})
     stamps=tuple((str(p),p.stat().st_mtime_ns,p.stat().st_size) for p in files)
     return _snapshot(stamps)

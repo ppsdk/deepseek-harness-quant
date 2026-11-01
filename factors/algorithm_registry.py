@@ -124,14 +124,8 @@ def _weighted_rank_composite(spec, panels, definitions):
         raise ValueError("weighted_rank_composite 的权重必须为正数，方向必须为 1 或 -1。")
     frames = [raw_factor(name, panels, definitions).rank(axis=1, pct=True) * sign
               for name, sign in zip(names, signs)]
-    stack = np.stack([frame.to_numpy(float) for frame in frames], axis=2)
-    valid = np.isfinite(stack)
-    count = valid.sum(axis=2)
-    weighted = np.where(valid, stack * weights.reshape(1, 1, -1), 0.0)
-    denominator = np.where(valid, weights.reshape(1, 1, -1), 0.0).sum(axis=2)
-    result = weighted.sum(axis=2) / np.where(denominator == 0, np.nan, denominator)
-    result[count < min_features] = np.nan
-    return pd.DataFrame(result, index=panels["close"].index, columns=panels["close"].columns)
+    from factors.signal_blend import combine
+    return combine(frames, weights, names, panels, minimum=min_features)
 
 
 register_factor_algorithm(

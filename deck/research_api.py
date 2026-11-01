@@ -9,6 +9,9 @@ def get(path,query):
     from backtest.research_ml import ml_config
     from backtest.research_jobs import status
     from backtest.research_pools import list_pools
+    if path=='/api/studio/diversification':
+        from factors.signal_blend import settings
+        return dict(ok=True, **{key: settings(key) for key in ('signal', 'portfolio', 'comparison')})
     if path=='/api/studio/pools':return list_pools(query)
     if path=='/api/studio/pools/screen':
         from backtest.research_screener import screen
@@ -82,6 +85,9 @@ def get(path,query):
 def post(path,payload,compute_lock):
     from factors.research_manager import save_factor,annotate
     from backtest.research_jobs import start
+    if path=='/api/studio/strategy-risk/compare':
+        from backtest.research_strategy_risk import compare
+        return compare(payload)
     if path=='/api/studio/signals':
         from backtest.research_signals import save
         return save(payload)

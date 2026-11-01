@@ -1,0 +1,32 @@
+# Local overrides: config/research_diversification.yaml. All weights are NAV fractions.
+signal:
+  enabled: true
+  window: 120
+  min_days: 20
+  min_samples: 60
+  max_abs_correlation: 0.85
+  unknown_policy: keep
+portfolio:
+  enabled: false
+  window: 120
+  min_observations: 60
+  max_abs_correlation: 0.80
+  industry_cap: null
+  style_cap: null
+  missing_policy: block
+exposures:
+  history_file: data/private/exposure_history.csv
+  styles:
+    momentum: {source: momentum, window: 60, lower: 0.333333, upper: 0.666667}
+    volatility: {source: volatility, window: 20, lower: 0.333333, upper: 0.666667}
+    size: {source: cap, window: 1, lower: 0.333333, upper: 0.666667}
+comparison:
+  min_observations: 60
+  max_runs: 20
+  max_strategy_weight: 0.40
+  max_abs_return_correlation: 0.80
+  max_signal_overlap: 0.80
+  max_holding_overlap: 0.80
+  industry_cap: null
+  style_cap: null
+  missing_policy: block
