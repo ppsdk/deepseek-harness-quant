@@ -44,22 +44,26 @@ class DividendSignalTests(unittest.TestCase):
             return service.evaluate({**dict(code=self.code, start=self.start, end=end, history=True), **query})
 
     def test_prefix_and_future_perturbation_do_not_change_prior_decisions_or_equity(self):
-        full = self.run_service()
-        cutoff = self.frame.index[260]
-        prefix = self.run_service(cutoff)
-        a = [r for r in full['history'] if r['date'] <= cutoff]
-        self.assertEqual(a, prefix['history'])
-        altered = self.frame.copy()
-        altered.loc[altered.index > cutoff, ['open', 'high', 'low', 'close']] *= 2
-        changed = self.run_service(frame=altered)
-        self.assertEqual(a, [r for r in changed['history'] if r['date'] <= cutoff])
-        self.assertGreater(len(full['trades']), 0)
-        for trade in full['trades']:
-            self.assertLess(trade['signal_date'], trade['date'])
-        for row in full['history']:
-            self.assertAlmostEqual(row['equity'], row['cash'] + row['market_value'] + row['dividend_receivable'])
-        json.dumps(full, allow_nan=False)
-        self.assertLessEqual(full['stress_metrics']['final_nav'], full['metrics']['final_nav'])
+        # Keep the original traded legacy fixture, and also exercise the new
+        # default without assuming every synthetic path must have a reversal.
+        for profile in ('kdj_21_5', self.cfg['default_profile']):
+            full = self.run_service(profile=profile)
+            cutoff = self.frame.index[260]
+            prefix = self.run_service(cutoff, profile=profile)
+            a = [r for r in full['history'] if r['date'] <= cutoff]
+            self.assertEqual(a, prefix['history'])
+            altered = self.frame.copy()
+            altered.loc[altered.index > cutoff, ['open', 'high', 'low', 'close']] *= 2
+            changed = self.run_service(frame=altered, profile=profile)
+            self.assertEqual(a, [r for r in changed['history'] if r['date'] <= cutoff])
+            if profile == 'kdj_21_5':
+                self.assertGreater(len(full['trades']), 0)
+            for trade in full['trades']:
+                self.assertLess(trade['signal_date'], trade['date'])
+            for row in full['history']:
+                self.assertAlmostEqual(row['equity'], row['cash'] + row['market_value'] + row['dividend_receivable'])
+            json.dumps(full, allow_nan=False)
+            self.assertLessEqual(full['stress_metrics']['final_nav'], full['metrics']['final_nav'])
 
     def test_filtered_profile_and_plain_profile_use_the_shared_runner(self):
         for ident in self.cfg['profiles']:
@@ -75,6 +79,22 @@ class DividendSignalTests(unittest.TestCase):
                     self.assertEqual([r['date'] for r in comparison], [r['date'] for r in result['history']])
                     self.assertAlmostEqual(comparison[-1]['equity']/result['effective']['execution']['initial_capital'],
                                            result[metric]['final_nav'])
+
+    def test_trend_exit_explanation_is_independent_of_kdj(self):
+        code, day = self.code, '2026-10-29'
+        def panel(value): return pd.DataFrame({code: [value]}, index=[day])
+        indicators = dict(k=panel(np.nan), d=panel(np.nan), trend=panel(10.),
+                          exit_known=panel(True),
+                          dmi_exit=panel(True), dmi_selected=panel(True),
+                          trend_exit=panel(True), ma_selected=panel(True),
+                          pdi=panel(10.), mdi=panel(25.), adx=panel(30.))
+        row = service.describe_day(code, day, {'close': panel(9.)},
+                                   {'_entry': panel(np.nan), '_exit': panel(1.)},
+                                   indicators, {'market_value': 100.}, self.cfg['states'])
+        self.assertEqual(row['state'], 'sell')
+        self.assertEqual(row['reasons'], ['dmi_bearish_confirmed', 'ma_trend_exit'])
+        self.assertEqual(row['pdi'], 10.)
+        self.assertIsNone(row['k'])
 
     def test_stale_unknown_calendar_missing_action_audit_are_never_data_ready(self):
         known = self.run_service(coverage=True)
@@ -122,7 +142,7 @@ class DividendSignalTests(unittest.TestCase):
                        dict(history='maybe'), dict(typo='ignored')]:
             with self.subTest(values=values), self.assertRaises(ValueError):
                 self.run_service(**values)
-        for key, value in [('kdj_period', True), ('oversold', 90), ('variant', 'future_model')]:
+        for key, value in [('kdj_period', True), ('oversold', 101), ('variant', 'future_model')]:
             cfg = deepcopy(self.cfg)
             profile = cfg['profiles'][cfg['default_profile']]
             if key == 'variant': profile[key] = value

@@ -1,6 +1,6 @@
 schema_version: 1
 base_config: dividend_timing_research
-default_profile: kdj_21_5
+default_profile: kdj_21_5_dmi_ma60
 default_code: 512890.SH
 assets: [512890.SH, 515450.SH]
 start: '2020-01-01'
@@ -8,6 +8,7 @@ output_dir: output/strategy_research/dividend_signals_v1
 action_coverage_file: data/private/dividend_timing/coverage.json
 max_history_rows: 6000
 recent_events: 12
+comparison_profiles: [kdj_21_5, kdj_21_5_dmi, kdj_21_5_ma60, kdj_21_5_dmi_ma60]
 states:
   insufficient: 数据不足
   buy: 低位反转买入条件
@@ -17,6 +18,41 @@ states:
   setup: 超卖待确认
   wait: 空仓等待
 profiles:
+  kdj_21_5_dmi_ma60:
+    label: KDJ21买入与DMI及MA60共同退出
+    variant: kdj_trend_exit
+    research_status: exploratory
+    settings: &trend_exit_settings
+      kdj_period: 21
+      kdj_smooth: 5
+      oversold: 20
+      setup_lookback: 5
+      confirmation_lookback: 3
+      min_trade_interval_days: 1
+      dmi_period: 14
+      dmi_confirm: 2
+      exit_period: 60
+      exit_confirm: 2
+      exit_slope_lookback: 5
+      exit_require_falling: true
+      exit_mode: dmi_and_ma
+    risk: {}
+  kdj_21_5_dmi:
+    label: KDJ21买入与DMI退出
+    variant: kdj_trend_exit
+    research_status: exploratory
+    settings:
+      <<: *trend_exit_settings
+      exit_mode: dmi
+    risk: {}
+  kdj_21_5_ma60:
+    label: KDJ21买入与MA60退出
+    variant: kdj_trend_exit
+    research_status: exploratory
+    settings:
+      <<: *trend_exit_settings
+      exit_mode: ma
+    risk: {}
   kdj_21_5:
     label: KDJ21低位反转实验信号
     variant: kdj

@@ -47,9 +47,11 @@ def plot_signals(result, path, display_start):
     bars = bars.loc[view.index]
     st = result['effective']['profile']['settings']
     exit_period = st.get('exit_period', st.get('trend_period'))
-    fig, axes = plt.subplots(3, 1, figsize=(16, 9), sharex=True,
-                             gridspec_kw={'height_ratios': [3.8, 1.45, .24]})
-    ax, kd, state = axes
+    separate_exit = result['effective']['profile']['variant'] == 'kdj_trend_exit'
+    heights = [3.8, 1.4, 1.2, .24] if separate_exit else [3.8, 1.45, .24]
+    fig, axes = plt.subplots(len(heights), 1, figsize=(16, 11 if separate_exit else 9), sharex=True,
+                             gridspec_kw={'height_ratios': heights})
+    ax, kd, state = axes[0], axes[1], axes[-1]
     fig.subplots_adjust(left=.065, right=.985, top=.84, bottom=.18, hspace=.12)
     dates = pd.to_datetime(view.index)
     loc = {day: i for i, day in enumerate(view.index)}
@@ -67,7 +69,8 @@ def plot_signals(result, path, display_start):
         signals = view[view['state'].eq(value)]
         sx = [loc[day] for day in signals.index]
         ax.scatter(sx, bars.loc[signals.index,'close'], facecolors='none', edgecolors=color, s=40, zorder=4)
-        kd.scatter(sx, signals['k'], facecolors='none', edgecolors=color, s=30, zorder=4)
+        if not separate_exit or value == 'buy':
+            kd.scatter(sx, signals['k'], facecolors='none', edgecolors=color, s=30, zorder=4)
         for trade in result['trades']:
             if trade['side'] != value or trade['date'] not in loc:
                 continue
@@ -79,7 +82,8 @@ def plot_signals(result, path, display_start):
             ax.annotate(text+trade['date'][5:], (i, trade['fill_price']), xytext=(0, offset),
                         textcoords='offset points', ha='center', color=color, fontsize=8,
                         arrowprops=dict(arrowstyle='-', color=color, lw=.6))
-    ax.legend(handles=[Line2D([],[],color=ORANGE,label=f'MA{exit_period}'),
+    ma_label = f'MA{exit_period}' + ('（参考）' if separate_exit and st['exit_mode']=='dmi' else '')
+    ax.legend(handles=[Line2D([],[],color=ORANGE,label=ma_label),
                        Line2D([],[],marker='o',linestyle='',markerfacecolor='none',color=BLUE,label='买入收盘信号'),
                        Line2D([],[],marker='^',linestyle='',color=BLUE,label='次日回测买入'),
                        Line2D([],[],marker='o',linestyle='',markerfacecolor='none',color=PURPLE,label='卖出收盘信号'),
@@ -88,10 +92,19 @@ def plot_signals(result, path, display_start):
     ax.set_ylabel('未复权价格')
     for column, color in [('k', BLUE), ('d', '#d95f02'), ('j', '#7570b3')]:
         kd.plot(x, view[column], color=color, lw=1.1 if column!='j' else .8, label=column.upper())
-    for value in (st['oversold'], st['overbought']):
+    for value in [st['oversold']] + ([st['overbought']] if 'overbought' in st else []):
         kd.axhline(value, color='#888888', lw=.8, linestyle='--')
-    kd.set_ylabel('KDJ')
+    kd.set_ylabel('KDJ · 买入' if separate_exit else 'KDJ')
     kd.legend(loc='upper left', ncol=3, frameon=False, fontsize=9)
+    if separate_exit:
+        dm = axes[2]
+        for key, color, style, label in [('pdi', BLUE, '-', '+DI'), ('mdi', PURPLE, '-', '-DI'), ('adx', '#777777', '--', 'ADX（仅观察）')]:
+            dm.plot(x, view[key], color=color, ls=style, lw=1, label=label)
+        sells = view[view['state'].eq('sell')]
+        if st['exit_mode'] != 'ma':
+            dm.scatter([loc[day] for day in sells.index], sells['mdi'], color=PURPLE, marker='v', s=35, zorder=4)
+        dm.set_ylabel(f"DMI({st['dmi_period']})" + (' · 参考' if st['exit_mode']=='ma' else ''))
+        dm.legend(loc='upper left', ncol=3, frameon=False, fontsize=9)
     for i, value in enumerate(view['state']):
         state.add_patch(Rectangle((i-.5, 0), 1., 1., facecolor=STATE_COLORS[value], linewidth=0))
     state.set_ylim(0,1); state.set_yticks([]); state.set_ylabel('状态', rotation=0, labelpad=22, va='center')
@@ -104,7 +117,13 @@ def plot_signals(result, path, display_start):
     profile = result['effective']['profile']
     fig.suptitle(f"{result['name']} {result['code']}｜交易信号 v1", x=.065, y=.97, ha='left',fontsize=17,weight='bold')
     volume = '启用趋势/量能过滤' if profile['variant']=='kdj_filtered' else '未启用量能过滤'
-    fig.text(.065,.91,f"KDJ：RSV {st['kdj_period']}日，K/D各平滑{st['kdj_smooth']}，阈值{st['oversold']}/{st['overbought']}；{volume}\n"
+    threshold = f"超卖≤{st['oversold']}" if separate_exit else f"阈值{st['oversold']}/{st['overbought']}"
+    if separate_exit:
+        dmi_text = f"-DI>+DI 连续{st['dmi_confirm']}日"
+        ma_text = f"收盘<MA{exit_period}连续{st['exit_confirm']}日" + (f"且均线低于{st['exit_slope_lookback']}日前" if st['exit_require_falling'] else '')
+        exit_text = {'dmi': dmi_text, 'ma': ma_text, 'dmi_and_ma': dmi_text+'，同时'+ma_text}[st['exit_mode']]
+        volume = '仅买入用KDJ；卖出：'+exit_text
+    fig.text(.065,.91,f"KDJ：RSV {st['kdj_period']}日，K/D各平滑{st['kdj_smooth']}，{threshold}；{volume}\n"
              f"展示 {view.index[0]}—{view.index[-1]}；浅蓝背景为实际回测持仓，底部色带为当日收盘状态",color='#555555',fontsize=10)
     labels = {'wait':'空仓等待','setup':'超卖待确认','buy':'买入条件','hold':'持有','weakening':'持仓转弱','sell':'卖出条件'}
     fig.legend(handles=[Patch(facecolor=STATE_COLORS[key],label=value) for key,value in labels.items()],
@@ -115,7 +134,7 @@ def plot_signals(result, path, display_start):
                 state_counts=view['state'].value_counts().to_dict())
 
 
-def plot_equity(result, path):
+def plot_equity(result, path, reference=None):
     initial = result['effective']['execution']['initial_capital']
     account = pd.DataFrame(result['history']).set_index('date')
     controls = {key:pd.DataFrame(value).set_index('date') for key,value in result['comparison_history'].items()}
@@ -129,20 +148,28 @@ def plot_equity(result, path):
     for key,nav in series.items():
         if not np.isclose(nav.iloc[-1],result[expected[key]]['final_nav']):
             raise ValueError('曲线末值与对应指标不一致。')
+    if reference:
+        other = pd.DataFrame(reference['history']).set_index('date')
+        if (not other.index.equals(account.index) or reference['code'] != result['code']
+                or reference['effective']['execution'] != result['effective']['execution']):
+            raise ValueError('旧规则对照必须使用相同资产、日期和执行参数。')
+        series['旧规则'] = other['equity']/initial
+        if not np.isclose(series['旧规则'].iloc[-1], reference['metrics']['final_nav']):
+            raise ValueError('旧规则曲线末值与指标不一致。')
     fig,axes=plt.subplots(3,1,figsize=(15,9),sharex=True,
                           gridspec_kw={'height_ratios':[3.3,1.4,.8]})
     fig.subplots_adjust(left=.08,right=.98,top=.80,bottom=.13,hspace=.12)
     dates=pd.to_datetime(account.index)
-    styles={'策略':(BLUE,'-'),'买入持有':('#b2182b','-'),'策略·压力费用':('#777777','--')}
+    styles={'策略':(BLUE,'-'),'买入持有':('#b2182b','-'),'策略·压力费用':('#777777','--'), '旧规则':(ORANGE,'-.')}
     metrics=[]
     for key,nav in series.items():
         color,linestyle=styles[key]
         axes[0].plot(dates,nav-1,color=color,ls=linestyle,lw=1.7,label=key)
         peak=np.maximum.accumulate(np.r_[1.,nav.to_numpy()])[1:]
         axes[1].plot(dates,nav/peak-1,color=color,ls=linestyle,lw=1.1)
-        m=result[expected[key]]
+        m=reference['metrics'] if key=='旧规则' else result[expected[key]]
         metrics.append(f"{key}：累计 {m['total_return']:.1%}｜年化 {m['annual_return']:.2%}｜最大回撤 {m['max_drawdown']:.2%}")
-    axes[0].legend(loc='upper left',ncol=3,frameon=False)
+    axes[0].legend(loc='upper left',ncol=4,frameon=False)
     axes[0].set_ylabel('累计收益'); axes[1].set_ylabel('回撤')
     for axis in axes[:2]:
         axis.yaxis.set_major_formatter(PercentFormatter(1.))
@@ -156,7 +183,7 @@ def plot_equity(result, path):
     for axis in axes:
         axis.spines[['top','right']].set_visible(False); axis.grid(alpha=.18)
     fig.suptitle(f"{result['code']}｜交易信号收益与回撤",x=.08,y=.97,ha='left',fontsize=17,weight='bold')
-    fig.text(.08,.845,'\n'.join(metrics),fontsize=10,color='#444444',linespacing=1.7)
+    fig.text(.08,.825 if reference else .845,'\n'.join(metrics),fontsize=10,color='#444444',linespacing=1.7)
     fig.text(.08,.035,f"{result['actual_start']}—{result['data_end']}；同起始资金、同资产、同窗口；权益直接来自统一模拟器，未平滑。\n"
              '已计入现有现金分红/拆分及费用；实验参数，非全新样本外结果，公司行为完整性仍待核验。',fontsize=9,color='#666666')
     save(fig,path)
@@ -165,16 +192,19 @@ def plot_equity(result, path):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--code'); parser.add_argument('--profile'); parser.add_argument('--end')
+    parser.add_argument('--compare-profile', help='Compare another profile from equal initial cash and date')
     parser.add_argument('--display-start',default='2025-01-01')
     args=parser.parse_args()
     result=evaluate({**{key:value for key,value in vars(args).items() if key in ('code','profile','end') and value},'history':True})
+    reference = evaluate(dict(code=result['code'], profile=args.compare_profile, start=result['actual_start'],
+                              end=result['data_end'], history=True)) if args.compare_profile else None
     output=ROOT/'output/strategy_research/charts'
     output.mkdir(parents=True,exist_ok=True)
     stem=f"{result['code']}_{result['profile']}_signal_v1"
     signals=output/f'{stem}_signals.png'; equity=output/f'{stem}_equity.png'
     metadata=plot_signals(result,signals,args.display_start)
-    plot_equity(result,equity)
-    (output/f'{stem}_source.json').write_text(json.dumps(dict(result=result,display=metadata),ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
+    plot_equity(result,equity,reference)
+    (output/f'{stem}_source.json').write_text(json.dumps(dict(result=result,display=metadata,reference=reference),ensure_ascii=False,indent=2,allow_nan=False),encoding='utf-8')
     print(signals);print(equity)
 
 

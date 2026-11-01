@@ -63,7 +63,10 @@ def _profile(cfg, ident):
     profile['id'] = ident
     settings = profile['settings']
     variant = profile['variant']
-    if variant == 'kdj_filtered':
+    if variant == 'kdj_trend_exit':
+        from backtest.research_kdj_trend_exit import validate
+        validate(settings)
+    elif variant == 'kdj_filtered':
         from backtest.research_kdj_timing import validate
         validate(settings)
     elif variant == 'kdj':
@@ -81,7 +84,7 @@ def _profile(cfg, ident):
         if settings['bollinger_k'] <= 0 or not 0 <= settings['low_position'] < settings['high_position'] <= 1:
             raise ValueError('布林辅助计算参数无效。')
     else:
-        raise ValueError('红利信号仅支持已实现的 kdj / kdj_filtered。')
+        raise ValueError('红利信号仅支持已实现的 kdj / kdj_filtered / kdj_trend_exit。')
     interval = settings.get('min_trade_interval_days')
     if isinstance(interval, bool) or not isinstance(interval, int) or interval < 1:
         raise ValueError('min_trade_interval_days 必须是正整数。')
@@ -111,10 +114,20 @@ def describe_day(code, day, panels, adapters, indicators, account, labels):
     close = panels['close'].at[day, code]
     ma = indicators.get('exit_ma', indicators['trend']).at[day, code]
     weakening = bool(known and pd.notna(ma) and close < ma)
+    if 'exit_weakening' in indicators:
+        weakening = flag('exit_weakening')
     if not known:
-        flat_state = held_state = 'insufficient'
+        flat_state = 'insufficient'
+    elif entry == 1 and exit_signal != 1:
+        flat_state = 'buy'
     else:
-        flat_state = 'buy' if entry == 1 and exit_signal != 1 else 'setup' if flag('recent_low') and exit_signal != 1 else 'wait'
+        flat_state = 'setup' if flag('recent_low') and exit_signal != 1 else 'wait'
+    # Legacy profiles still require their original combined input validity.
+    # Only the new adapter declares an independently calculable exit.
+    held_known = exit_signal is not None if 'exit_known' in indicators else known
+    if not held_known:
+        held_state = 'insufficient'
+    else:
         held_state = 'sell' if exit_signal == 1 else 'weakening' if weakening else 'hold'
     state = held_state if held else flat_state
     reasons = []
@@ -122,9 +135,11 @@ def describe_day(code, day, panels, adapters, indicators, account, labels):
         reasons.append('kdj_low_reversal')
     if exit_signal == 1:
         if flag('high_exit'): reasons.append('kdj_high_cross_down')
-        if flag('trend_exit'): reasons.append('ma_trend_exit')
+        if flag('dmi_exit') and flag('dmi_selected'): reasons.append('dmi_bearish_confirmed')
+        if flag('trend_exit') and ('ma_selected' not in indicators or flag('ma_selected')): reasons.append('ma_trend_exit')
     if state == 'setup': reasons.append('oversold_waiting_confirmation')
-    if state == 'weakening': reasons.append('below_exit_ma_unconfirmed')
+    if state == 'weakening':
+        reasons.append('trend_exit_pending_confirmation' if 'exit_weakening' in indicators else 'below_exit_ma_unconfirmed')
     if state == 'insufficient': reasons.append('indicator_inputs_unknown')
     k = _number(indicators['k'].at[day, code]); d = _number(indicators['d'].at[day, code])
     return dict(date=day, state=state, label=labels[state], if_flat=flat_state, if_held=held_state,
@@ -132,6 +147,9 @@ def describe_day(code, day, panels, adapters, indicators, account, labels):
                 k=k, d=d, j=3*k-2*d if k is not None and d is not None else None,
                 recent_low=flag('recent_low'), recent_high=flag('recent_high'),
                 cross_up=flag('cross_up'), cross_down=flag('cross_down'),
+                pdi=_number(indicators['pdi'].at[day, code]) if 'pdi' in indicators else None,
+                mdi=_number(indicators['mdi'].at[day, code]) if 'mdi' in indicators else None,
+                adx=_number(indicators['adx'].at[day, code]) if 'adx' in indicators else None,
                 trend_filter=flag('trend_filter') if 'trend_filter' in indicators else None,
                 volume_ratio=_number(indicators['volume_ratio'].at[day, code]) if 'volume_ratio' in indicators else None)
 
