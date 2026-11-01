@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 import pandas as pd
 
-from backtest.research_dividend_timing import signals, volatility_budget
+from backtest.research_dividend_timing import signals, volatility_budget, technical_overlay
 from backtest.research_cash_actions import CashActions
 from scripts.dividend_timing_research import run
 from factors.research_library import read_config
@@ -40,6 +40,25 @@ class DividendTimingTests(unittest.TestCase):
         self.assertEqual(shares['x'],200.)
         self.assertEqual(basis['x'],5.)
         self.assertEqual(peaks['x'],5.)
+
+    def test_technical_overlay_only_caps_target_and_is_causal(self):
+        days=pd.bdate_range('2024-01-01',periods=100).strftime('%Y-%m-%d')
+        close=np.linspace(10,20,100)
+        panels={k:pd.DataFrame({'x':v},index=days) for k,v in {
+            'close':close,'high':close*1.01,'low':close*.99}.items()}
+        panels['_base_target_exposure_pct']=pd.Series(100.,index=days)
+        benchmark=pd.DataFrame({'close':np.linspace(20,10,100)},index=days)
+        cfg=dict(market_fast=10,market_slow=30,market_confirm_days=2,
+                 market_caps={'stock':.5,'etf':.5},bollinger_period=20,bollinger_k=2.,
+                 bollinger_overbought_position=.95,bollinger_cap=.8,kdj_period=9,
+                 kdj_smooth=3,kdj_overbought=80,kdj_cap=.8)
+        out,diag=technical_overlay(panels,benchmark,'stock','market_gate',cfg)
+        self.assertLessEqual(float(out.iloc[-1]),50.)
+        self.assertLessEqual(float(out.iloc[0]),50.)
+        changed=panels['close'].copy(); changed.iloc[80:]*=10
+        panels2=dict(panels);panels2['close']=changed;panels2['_base_target_exposure_pct']=panels['_base_target_exposure_pct']
+        out2,_=technical_overlay(panels2,benchmark,'stock','market_gate',cfg)
+        pd.testing.assert_series_equal(out.iloc[:80],out2.iloc[:80])
     def test_volatility_sizing_has_trailing_formula_and_is_scale_invariant(self):
         frame=self.frame();p={'close':pd.DataFrame({'x':frame.close})}
         budget,vol=volatility_budget(p,20,.10,.3,242)

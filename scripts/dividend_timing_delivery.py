@@ -17,6 +17,10 @@ def main():
     cash_vol_folder=ROOT/cfg.get('cashflow_output_dir','output/strategy_research/dividend_volatility_cashflow_v1')
     cash_data=json.loads((cash_folder/'results.json').read_text(encoding='utf-8')) if (cash_folder/'results.json').exists() else None
     cash_vol_data=json.loads((cash_vol_folder/'results.json').read_text(encoding='utf-8')) if (cash_vol_folder/'results.json').exists() else None
+    overlay_folder=ROOT/cfg.get('overlay_output_dir','output/strategy_research/dividend_overlay_v1')
+    overlay_cash_folder=ROOT/cfg.get('overlay_output_dir','output/strategy_research/dividend_overlay_v1').replace('_v1','_cashflow_v1')
+    overlay_data=json.loads((overlay_folder/'results.json').read_text(encoding='utf-8')) if (overlay_folder/'results.json').exists() else None
+    overlay_cash_data=json.loads((overlay_cash_folder/'results.json').read_text(encoding='utf-8')) if (overlay_cash_folder/'results.json').exists() else None
     trend=json.loads((ROOT/base['output_dir']/'results.json').read_text(encoding='utf-8'))
     rows=data['records'];selected=data['selected'];frames,audit=load_data(base)
     def get(code,phase,variant,stress=False):
@@ -25,6 +29,9 @@ def main():
         return next(r for r in cash_data['records'] if r['code']==code and r.get('phase')==phase and r['variant']['id']==variant and r['stress']==stress)
     def get_cash_vol(code,phase,variant,stress=False):
         return next(r for r in cash_vol_data['records'] if r['code']==code and r.get('phase')==phase and r['variant']['id']==variant and r['stress']==stress)
+    def get_overlay(code,phase,overlay,stress=False,cash=False):
+        source=overlay_cash_data if cash else overlay_data
+        return next(r for r in source['records'] if r['code']==code and r.get('phase')==phase and r['overlay']==overlay and r['stress']==stress)
     lines=['# 红利低波个股与基金择时研究', '',
            f"研究截止日：{base['as_of']}（Asia/Shanghai）；资料核验时间：{base['checked_at']}。行情实际截止：{base['data_end']}。",
            '', '## 结论和两套规则', '',
@@ -84,6 +91,21 @@ def main():
             code=spec['primary']; c=get_cash_vol(code,'full','volatility_budget'); d=c.get('cash_distributions',{})
             lines.append(f"|{spec['assets'][code]}|{c['metrics']['annual_return']:.2%}|{c['metrics']['max_drawdown']:.2%}|{d.get('gross_dividends',0.):.2f}|{d.get('dividend_tax_paid',0.):.2f}|")
         lines += ['', '现金流账本覆盖当前本地已取得的公告和基金分红数据；行情与公司行为文件位于 `data/private/`，不随代码提交。若数据源后续修订公告，应重新获取并保留数据指纹。']
+    if overlay_data and overlay_cash_data:
+        labels={'base':'波动预算基线','market_gate':'沪深300门控','bollinger':'布林带限制','kdj':'KDJ限制','combo':'三者组合'}
+        lines += ['', '## 技术叠加层对照', '',
+                  '在冻结个股60日、ETF20日、目标年化波动12%的波动预算后，补测沪深300趋势门控、布林带过热限制、KDJ高位转弱限制及三者组合。叠加层只压低目标仓位，仍由同一个T+1开盘账本执行；现金流版本继续计入现金分红、个股红利税和ETF份额拆分。', '',
+                  '|标的|方案|年化|最大回撤|夏普|平均仓位|', '|---|---|---:|---:|---:|---:|']
+        for group,spec in base['groups'].items():
+            for code in [spec['primary']]:
+                for overlay_name in cfg['overlay']['variants']:
+                    r=get_overlay(code,'full',overlay_name,cash=True);m=r['metrics']
+                    lines.append(f"|{spec['assets'][code]} {code}|{labels.get(overlay_name,overlay_name)}|{m['annual_return']:.2%}|{m['max_drawdown']:.2%}|{m['sharpe']:.2f}|{m['average_exposure']:.1%}|")
+        lines += ['', '样本外 forward replay（2025-01-01 至 2026-10-29）显示，长江电力基线与三者组合的年化/回撤分别为 '
+                  f"{get_overlay('600900.SH','forward_replay','base',cash=True)['metrics']['annual_return']:.2%}/{get_overlay('600900.SH','forward_replay','base',cash=True)['metrics']['max_drawdown']:.2%} 和 "
+                  f"{get_overlay('600900.SH','forward_replay','combo',cash=True)['metrics']['annual_return']:.2%}/{get_overlay('600900.SH','forward_replay','combo',cash=True)['metrics']['max_drawdown']:.2%}；512890基线与三者组合分别为 "
+                  f"{get_overlay('512890.SH','forward_replay','base',cash=True)['metrics']['annual_return']:.2%}/{get_overlay('512890.SH','forward_replay','base',cash=True)['metrics']['max_drawdown']:.2%} 和 "
+                  f"{get_overlay('512890.SH','forward_replay','combo',cash=True)['metrics']['annual_return']:.2%}/{get_overlay('512890.SH','forward_replay','combo',cash=True)['metrics']['max_drawdown']:.2%}。沪深300门控和组合主要改善回撤但牺牲收益，布林带边际影响很小；KDJ在长江电力样本触发有限。当前应把它们作为可解释的风险控制候选，不称为稳定收益增强策略。"]
     lines += ['', '## 场外基金和实际执行', '',
               '上述已运行的基金策略是场内ETF策略。若持有ETF联接、普通指数基金或其他场外基金，可以把对应ETF的仓位信号作为研究参考，但应在信号出现后按该基金申购赎回规则执行，不能假定以ETF下一开盘成交。场外基金的未知净值、确认时间、赎回到账、短期赎回费及销售服务费必须单独回测；本次没有完成这部分验证。不能把ETF结果原样承诺给场外基金。', '',
               '个股需关注已公开的分红实施、盈利和现金流变化；本次现金流账本只使用已实施且已取得的历史公司行为，不把未来分红方案回填到历史。当前股息率应以已知分红与真实未复权价格计算，不能拿复权价作为分母。', '',
@@ -101,9 +123,12 @@ def main():
     lines += ['', '复现命令：', '', '```powershell', 'python -X utf8 scripts/dividend_timing_research.py --download',
               'python -X utf8 scripts/dividend_timing_research.py --cashflow',
               'python -X utf8 scripts/dividend_volatility_research.py --cashflow',
+              'python -X utf8 scripts/dividend_volatility_research.py --overlays --cashflow',
+              'python -X utf8 scripts/dividend_volatility_research.py --overlays',
+              'python -X utf8 validation/audit_dividend_timing.py',
               'python -X utf8 scripts/dividend_volatility_research.py','python -X utf8 scripts/dividend_timing_delivery.py',
               'python -X utf8 -m unittest validation.test_dividend_timing -v','```', '',
-              f"前复权初轮账本：`{base['output_dir']}/runs/`；现金流初轮账本：`{base.get('cashflow_output_dir','output/strategy_research/dividend_timing_cashflow_v1')}/runs/`；前复权补测账本：`{cfg['output_dir']}/runs/`；现金流补测账本：`{cfg.get('cashflow_output_dir','output/strategy_research/dividend_volatility_cashflow_v1')}/runs/`；每轮保留配置、数据指纹、冻结选择及全部对照。",
+              f"前复权初轮账本：`{base['output_dir']}/runs/`；现金流初轮账本：`{base.get('cashflow_output_dir','output/strategy_research/dividend_timing_cashflow_v1')}/runs/`；前复权补测账本：`{cfg['output_dir']}/runs/`；现金流补测账本：`{cfg.get('cashflow_output_dir','output/strategy_research/dividend_volatility_cashflow_v1')}/runs/`；前复权技术叠加账本：`{cfg.get('overlay_output_dir','output/strategy_research/dividend_overlay_v1')}/runs/`；现金流技术叠加账本：`{cfg.get('overlay_output_dir','output/strategy_research/dividend_overlay_v1').replace('_v1','_cashflow_v1')}/runs/`；每轮保留配置、数据指纹、冻结选择及全部对照。",
               '', '本报告提供可执行的研究规则和已运行证据，不将历史结果解释为未来收益承诺。']
     path=ROOT/'docs/红利低波个股与基金择时研究.md'
     path.write_text('\n'.join(lines)+'\n',encoding='utf-8')

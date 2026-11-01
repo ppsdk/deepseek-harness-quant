@@ -14,7 +14,17 @@ from scripts.dividend_timing_research import load_data,write
 def main():
     base=read_config('dividend_timing_research');vol=read_config('dividend_volatility_research')
     frame_cache={};ledgers=0;trade_count=0;max_error=0.
-    for folder in [base['output_dir'],vol['output_dir']]:
+    folders = [base['output_dir'], vol['output_dir']]
+    # Audit the optional technical-overlay archives with the same independent
+    # cash/equity reconstruction.  Missing folders are skipped so the audit
+    # remains compatible with older workspaces.
+    overlay = vol.get('overlay_output_dir')
+    if overlay:
+        folders.append(overlay)
+        folders.append(overlay.replace('_v1', '_cashflow_v1'))
+    for folder in dict.fromkeys(folders):
+        if not (ROOT / folder / 'runs').exists():
+            continue
         manifest_path=ROOT/folder/'manifest.json'
         manifest=json.loads(manifest_path.read_text(encoding='utf-8')) if manifest_path.exists() else {}
         raw=manifest.get('price_basis') == 'none' or 'cashflow' in folder
@@ -25,9 +35,11 @@ def main():
         for path in (ROOT/folder/'runs').glob('*.json'):
             row=json.loads(path.read_text(encoding='utf-8'));code=row['code'];p=row['params'];cash=p['initial_capital']
             by_day={}; holdings={};marks={}
-            event_by_day={}
-            for event in row.get('cash_distributions', {}).get('events', []):
-                event_by_day.setdefault(event['date'], []).append(event)
+            events = sorted(row.get('cash_distributions', {}).get('events', []),
+                            key=lambda event: (event['date'],
+                                               {'entitlement': 0, 'split': 1,
+                                                'cash_dividend': 2}.get(event['type'], 3)))
+            processed_events = set()
             for trade in row['trades']:
                 assert trade['signal_date']<trade['date'],path
                 by_day.setdefault(trade['date'],[]).append(trade)
@@ -38,6 +50,19 @@ def main():
             previous=p['initial_capital']
             for account,ret in zip(row['daily_account'],row['returns']):
                 day=account['date']
+                # Corporate-action dates can fall on a missing quote date.
+                # Apply all due ledger events before marking the next observed
+                # account date, matching CashActions.start_day semantics.
+                for event_index,event in enumerate(events):
+                    if event_index in processed_events or event['date'] > day:
+                        continue
+                    if event['type']=='cash_dividend':
+                        cash+=event['amount']
+                    elif event['type']=='split':
+                        for key in list(holdings):
+                            if key[1] == event['code'] and (event.get('sleeve') is None or key[0] == event.get('sleeve')):
+                                holdings[key] *= event['ratio']
+                    processed_events.add(event_index)
                 for trade in by_day.get(day,[]):
                     key=(trade.get('sleeve',0),trade['code'])
                     sign=1 if trade['side']=='buy' else -1
@@ -45,13 +70,6 @@ def main():
                     cash-=float(trade.get('dividend_tax', 0.))
                     holdings[key]=holdings.get(key,0.)+sign*trade['quantity']
                     assert holdings[key]>-1e-7
-                for event in event_by_day.get(day,[]):
-                    if event['type']=='cash_dividend':
-                        cash+=event['amount']
-                    elif event['type']=='split':
-                        for key in list(holdings):
-                            if key[1] == event['code'] and (event.get('sleeve') is None or key[0] == event.get('sleeve')):
-                                holdings[key] *= event['ratio']
                 mv=0.
                 for key,qty in holdings.items():
                     if abs(qty)<1e-7:continue

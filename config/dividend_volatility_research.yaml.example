@@ -1,6 +1,7 @@
 base_config: dividend_timing_research
 output_dir: output/strategy_research/dividend_volatility_v1
 cashflow_output_dir: output/strategy_research/dividend_volatility_cashflow_v1
+overlay_output_dir: output/strategy_research/dividend_overlay_v1
 windows: [20, 60]
 target_volatilities: [0.08, 0.10, 0.12]
 annual_days: 242
@@ -10,3 +11,21 @@ min_trade_interval_days: 10
 rebalance_threshold_pct: 5
 selection: discovery_median_calmar
 design_note: 在已观察到慢均线择时失败后提出的探索性波动预算检验，重新仅按2020-2022发现期选参。验证期已被本轮早先均线研究观察，不称盲测。按前收盘已知波动率计算仓位，下一开盘按现金账本调仓。静态匹配仓位对照的平均仓位来自完整区间，仅事后解释风险收益，不可作为实盘可用参数。
+overlay:
+  benchmark_code: 000300.SH
+  market_fast: 20
+  market_slow: 60
+  market_confirm_days: 2
+  market_caps: {stock: 0.50, etf: 0.50}
+  bollinger_period: 20
+  bollinger_k: 2.0
+  bollinger_overbought_position: 0.95
+  bollinger_cap: 0.80
+  kdj_period: 9
+  kdj_smooth: 3
+  kdj_overbought: 80
+  kdj_cap: 0.80
+  variants: [base, market_gate, bollinger, kdj, combo]
+overlay_base:
+  stock: {window: 60, target_volatility: 0.12}
+  etf: {window: 20, target_volatility: 0.12}
