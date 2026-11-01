@@ -24,6 +24,8 @@ def main():
         folders.append(overlay.replace('_v1', '_cashflow_v1'))
     if vol.get('reversal', {}).get('output_dir'):
         folders.append(vol['reversal']['output_dir'])
+    if vol.get('kdj_parameter', {}).get('output_dir'):
+        folders.append(vol['kdj_parameter']['output_dir'])
     for folder in dict.fromkeys(folders):
         if not (ROOT / folder / 'runs').exists():
             continue

@@ -47,3 +47,37 @@ reversal:
   trend_confirm: 2
   min_trade_interval_days: 1
   design_note: 低位出现后等待金叉或收复下轨，持有至高位转弱或上涨后跌破短均线。仅使用当时已发生公司行为构造连续信号；未复权价格成交并单独计分红税费。固定三组候选按发现期比较，其他历史已被查看，不是盲测；不保证买到最低或卖到最高。
+kdj_parameter:
+  output_dir: output/strategy_research/dividend_kdj_parameter_v1
+  base_settings:
+    bollinger_period: 20
+    bollinger_k: 2.0
+    low_position: 0.10
+    high_position: 0.90
+    setup_lookback: 5
+    confirmation_lookback: 3
+    trend_period: 10
+    trend_confirm: 2
+    min_trade_interval_days: 1
+  kdj_grid:
+    - {period: 5, smooth: 3, oversold: 20, overbought: 80}
+    - {period: 9, smooth: 3, oversold: 30, overbought: 70}
+    - {period: 14, smooth: 3, oversold: 30, overbought: 70}
+    - {period: 14, smooth: 5, oversold: 20, overbought: 80}
+  filtered_grid:
+    - {trend_slow_period: 60, volume_min_ratio: 0.8, stop_loss_pct: 0, trailing_stop_pct: 0}
+    - {trend_slow_period: 60, volume_min_ratio: 1.0, stop_loss_pct: 0, trailing_stop_pct: 0}
+    - {trend_slow_period: 120, volume_min_ratio: 0.8, stop_loss_pct: 0, trailing_stop_pct: 0}
+    - {trend_slow_period: 60, volume_min_ratio: 0.8, stop_loss_pct: 8, trailing_stop_pct: 0}
+    - {trend_slow_period: 60, volume_min_ratio: 0.8, stop_loss_pct: 0, trailing_stop_pct: 10}
+    - {trend_slow_period: 60, volume_min_ratio: 1.0, stop_loss_pct: 8, trailing_stop_pct: 10}
+  trend_fast_period: 20
+  trend_slope_lookback: 5
+  trend_max_below_slow: 0.02
+  volume_period: 20
+  volume_confirm_lookback: 3
+  trend_enabled: true
+  volume_enabled: true
+  exit_period: 10
+  exit_confirm: 2
+  risk_cooldown_days: 5

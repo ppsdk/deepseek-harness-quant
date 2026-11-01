@@ -34,6 +34,25 @@ class DividendTimingTests(unittest.TestCase):
                 pd.testing.assert_frame_equal(full[key].iloc[:250],prefix[key])
                 self.assertFalse((full['_entry'].eq(1)&full['_exit'].eq(1)).any().any())
 
+    def test_filtered_kdj_uses_trend_and_volume_causally(self):
+        frame = self.frame(420)
+        from scripts.dividend_timing_research import panels_for
+        p = panels_for(frame, 'x')
+        settings = dict(kdj_period=9, kdj_smooth=3, oversold=30, overbought=70,
+                        setup_lookback=5, confirmation_lookback=3,
+                        trend_fast_period=20, trend_slow_period=60,
+                        trend_slope_lookback=5, trend_max_below_slow=.02,
+                        volume_period=20, volume_min_ratio=.8,
+                        volume_confirm_lookback=3, trend_enabled=True,
+                        volume_enabled=True, exit_period=10, exit_confirm=2)
+        full, indicators = reversal_signals(p, 'kdj_filtered', settings)
+        prefix, _ = reversal_signals({k: v.iloc[:250] for k, v in p.items()}, 'kdj_filtered', settings)
+        for key in full:
+            pd.testing.assert_frame_equal(full[key].iloc[:250], prefix[key])
+        self.assertIn('volume_ratio', indicators)
+        self.assertIn('trend_filter', indicators)
+        self.assertFalse((full['_entry'].eq(1) & full['_exit'].eq(1)).any().any())
+
     def test_causal_signal_prices_remove_mechanical_dividend_and_split_drop(self):
         prices=pd.DataFrame({'x':[10.,9.,4.5,4.5]},index=['2024-01-01','2024-01-02','2024-01-03','2024-01-04'])
         p={k:prices.copy() for k in ('open','high','low','close')}

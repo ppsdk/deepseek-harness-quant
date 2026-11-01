@@ -125,6 +125,9 @@ def causal_signal_panels(panels, actions):
 
 def reversal_signals(panels, variant, settings):
     """Low-zone reversal entry, high-zone/trend failure exit, no pivot backdating."""
+    if variant == 'kdj_filtered':
+        from backtest.research_kdj_timing import signals as filtered_signals
+        return filtered_signals(panels, settings)
     if variant not in ('kdj', 'bollinger', 'combo'):
         raise ValueError('未知反转规则：' + str(variant))
     from factors.research_indicators import calculate
