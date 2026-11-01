@@ -54,7 +54,8 @@ def signals(panels, settings):
     confirm = int(settings.get('confirmation_lookback', 3))
     recent_cross = cross_up.astype(float).rolling(confirm, min_periods=1).max().eq(1)
     entry = recent_low & recent_cross & k.gt(d) & close.gt(close.shift())
-    exit_signal = recent_high & cross_down
+    high_exit = recent_high & cross_down
+    exit_signal = high_exit.copy()
 
     fast_n = int(settings.get('trend_fast_period', 20))
     slow_n = int(settings.get('trend_slow_period', 60))
@@ -89,4 +90,7 @@ def signals(panels, settings):
     return dict(_entry=(entry & ~exit_signal).astype(float).where(known),
                 _exit=exit_signal.astype(float).where(known)), dict(
         k=k, d=d, trend=slow, fast=fast, volume_ratio=volume_ratio,
-        trend_filter=trend_filter, exit_ma=exit_ma, known=known)
+        trend_filter=trend_filter, exit_ma=exit_ma, known=known,
+        recent_low=recent_low, recent_high=recent_high,
+        cross_up=cross_up, cross_down=cross_down,
+        high_exit=high_exit, trend_exit=trend_exit)

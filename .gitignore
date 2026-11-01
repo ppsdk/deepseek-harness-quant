@@ -69,6 +69,7 @@ config/factor_library.yaml
 config/research_diversification.yaml
 config/dividend_timing_research.yaml
 config/dividend_volatility_research.yaml
+config/dividend_signals.yaml
 config/alpha101.yaml
 config/research_presets.yaml
 config/research_factors.yaml

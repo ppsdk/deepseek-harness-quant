@@ -19,6 +19,9 @@ def get(path,query):
     if path=='/api/studio/signals':
         from backtest.research_signals import plans
         return plans(query)
+    if path=='/api/studio/signals/dividend':
+        from backtest.research_dividend_signals import evaluate
+        return evaluate(query)
     if path=='/api/studio/signals/chart':
         from backtest.research_signals import signal_chart
         return signal_chart(query)

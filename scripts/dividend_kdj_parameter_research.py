@@ -14,10 +14,9 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from factors.research_library import read_config
-from backtest.research_dividend_timing import causal_signal_panels, reversal_signals
-from backtest.research_portfolio import simulate
-from scripts.dividend_timing_research import load_data, load_cash_actions, panels_for, summarize, write
+from scripts.dividend_timing_research import load_data, load_cash_actions, write
 from backtest.research_runtime import snapshot
+from backtest.research_dividend_signals import run_candidate as run
 
 
 def candidates(cfg):
@@ -56,31 +55,6 @@ def candidates(cfg):
                          risk={'stop_loss_pct': stop, 'trailing_stop_pct': trailing,
                                'risk_cooldown_days': 5}))
     return rows
-
-
-def run(frame, code, group, candidate, period, base, actions, stress=False):
-    panels = panels_for(frame, code)
-    signal_panels = causal_signal_panels(panels, actions)
-    adapters, indicators = reversal_signals(signal_panels, candidate['variant'], candidate['settings'])
-    known = indicators.get('known', indicators['trend'].notna() & indicators['d'].notna())
-    valid = known.index[known.iloc[:, 0] & (known.index >= period['start']) & (known.index <= period['end'])]
-    if not len(valid):
-        raise ValueError(f'反转研究没有充分预热日期：{code}/{candidate["id"]}')
-    panels.update(adapters)
-    panels['_execution_price_basis'] = 'raw'
-    panels['_cash_actions'] = actions
-    params = {**base['execution'], **candidate['risk'], **period,
-              'start': str(valid[0]), 'stamp_tax_bps': base['groups'][group]['stamp_tax_bps'],
-              'rebalance_days': 1, 'min_trade_interval_days': candidate['settings']['min_trade_interval_days']}
-    if stress:
-        params.update(base['stress'])
-    sim = simulate(panels, panels['close'] * 0. + 1., params)
-    return dict(code=code, group=group, candidate=candidate['id'], variant=candidate['variant'],
-                actual_start=params['start'], params=params, period=period, stress=stress,
-                metrics=summarize(sim, params['initial_capital']), daily_account=sim['daily_account'],
-                trades=sim['trades'], rejections=sim['rejections'],
-                cash_distributions=sim['cash_distributions'],
-                returns=[dict(date=str(d)[:10], ret=float(v)) for d, v in sim['returns'].items()])
 
 
 def main():

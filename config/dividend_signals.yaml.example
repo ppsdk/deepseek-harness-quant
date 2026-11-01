@@ -1,0 +1,62 @@
+schema_version: 1
+base_config: dividend_timing_research
+default_profile: kdj_21_5
+default_code: 512890.SH
+assets: [512890.SH, 515450.SH]
+start: '2020-01-01'
+output_dir: output/strategy_research/dividend_signals_v1
+action_coverage_file: data/private/dividend_timing/coverage.json
+max_history_rows: 6000
+recent_events: 12
+states:
+  insufficient: 数据不足
+  buy: 低位反转买入条件
+  sell: 转弱卖出条件
+  weakening: 持仓转弱观察
+  hold: 持有观察
+  setup: 超卖待确认
+  wait: 空仓等待
+profiles:
+  kdj_21_5:
+    label: KDJ21低位反转实验信号
+    variant: kdj
+    research_status: exploratory
+    settings:
+      kdj_period: 21
+      kdj_smooth: 5
+      oversold: 20
+      overbought: 80
+      setup_lookback: 5
+      confirmation_lookback: 3
+      trend_period: 10
+      trend_confirm: 2
+      min_trade_interval_days: 1
+      bollinger_period: 20
+      bollinger_k: 2.0
+      low_position: 0.10
+      high_position: 0.90
+    risk: {}
+  kdj_21_5_filtered:
+    label: KDJ21趋势量能过滤实验信号
+    variant: kdj_filtered
+    research_status: exploratory
+    settings:
+      kdj_period: 21
+      kdj_smooth: 5
+      oversold: 20
+      overbought: 80
+      setup_lookback: 5
+      confirmation_lookback: 3
+      min_trade_interval_days: 1
+      trend_fast_period: 20
+      trend_slow_period: 60
+      trend_slope_lookback: 5
+      trend_max_below_slow: 0.02
+      trend_enabled: true
+      volume_period: 20
+      volume_min_ratio: 0.8
+      volume_confirm_lookback: 3
+      volume_enabled: true
+      exit_period: 10
+      exit_confirm: 2
+    risk: {}

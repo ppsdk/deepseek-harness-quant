@@ -174,4 +174,7 @@ def reversal_signals(panels, variant, settings):
     trend_exit = recently_above & below & trend.lt(trend.shift())
     exit_signal = high_exit | trend_exit
     return dict(_entry=(entry & ~exit_signal).astype(float).where(known), _exit=exit_signal.astype(float).where(known)), dict(
-        k=k, d=d, mid=mid, lower=lower, upper=upper, position=position, trend=trend)
+        k=k, d=d, mid=mid, lower=lower, upper=upper, position=position, trend=trend,
+        signal_known=known, recent_low=recent_low, recent_high=recent_high,
+        cross_up=cross_up, cross_down=cross_down,
+        high_exit=high_exit, trend_exit=trend_exit)
